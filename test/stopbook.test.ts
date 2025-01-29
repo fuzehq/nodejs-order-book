@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import BigNumber from "bignumber.js";
 import { OrderFactory } from "../src/order";
 import { StopBook } from "../src/stopbook";
 import { OrderType, Side, type StopOrder, TimeInForce } from "../src/types";
@@ -16,9 +17,9 @@ void test("it should add/remove/get order to stop book", () => {
 			id: orderId,
 			type: OrderType.STOP_LIMIT,
 			side,
-			size: 5,
-			price: stopPrice,
-			stopPrice,
+			size: BigNumber(5),
+			price: BigNumber(stopPrice),
+			stopPrice: BigNumber(stopPrice),
 			timeInForce: TimeInForce.GTC,
 		});
 		ob.add(order);
@@ -60,7 +61,11 @@ void test("it should add/remove/get order to stop book", () => {
 
 	{
 		// Before removing orders, test getConditionalOrders
-		const response = ob.getConditionalOrders(Side.SELL, 110, 130);
+		const response = ob.getConditionalOrders(
+			Side.SELL,
+			BigNumber(110),
+			BigNumber(130),
+		);
 		let totalOrder = 0;
 		response.forEach((stopQueue) => {
 			totalOrder += stopQueue.len();
@@ -72,7 +77,11 @@ void test("it should add/remove/get order to stop book", () => {
 
 	{
 		// Before removing orders, test getConditionalOrders
-		const response = ob.getConditionalOrders(Side.BUY, 70, 130);
+		const response = ob.getConditionalOrders(
+			Side.BUY,
+			BigNumber(70),
+			BigNumber(130),
+		);
 		let totalOrder = 0;
 		response.forEach((stopQueue) => {
 			totalOrder += stopQueue.len();
@@ -82,17 +91,23 @@ void test("it should add/remove/get order to stop book", () => {
 		assert.equal(totalOrder, 5);
 	}
 
-	assert.deepStrictEqual(ob.remove(Side.SELL, "sell-3", 120)?.id, "sell-3");
+	assert.deepStrictEqual(
+		ob.remove(Side.SELL, "sell-3", BigNumber(120))?.id,
+		"sell-3",
+	);
 	// @ts-expect-error asks is private
 	assert.equal(ob.asks._priceTree.length, 3);
 
 	// Lenght non changed because there were two orders at price level 100
-	assert.deepStrictEqual(ob.remove(Side.BUY, "buy-2", 100)?.id, "buy-2");
+	assert.deepStrictEqual(
+		ob.remove(Side.BUY, "buy-2", BigNumber(100))?.id,
+		"buy-2",
+	);
 	// @ts-expect-error asks is private
 	assert.equal(ob.bids._priceTree.length, 4);
 
 	// Try to remove non existing order
-	assert.equal(ob.remove(Side.SELL, "fake-id", 130), undefined);
+	assert.equal(ob.remove(Side.SELL, "fake-id", BigNumber(130)), undefined);
 });
 
 void test("it should validate conditional order", () => {
@@ -112,12 +127,15 @@ void test("it should validate conditional order", () => {
 			id: "foo",
 			type: orderType,
 			side,
-			size: 5,
+			size: BigNumber(5),
 			...(price !== null ? { price } : {}),
-			stopPrice,
+			stopPrice: BigNumber(stopPrice),
 			timeInForce: TimeInForce.GTC,
 		}) as StopOrder;
-		assert.equal(ob.validConditionalOrder(marketPrice, order), expect);
+		assert.equal(
+			ob.validConditionalOrder(BigNumber(marketPrice), order),
+			expect,
+		);
 	};
 
 	// Stop LIMIT BUY
@@ -153,9 +171,9 @@ void test("it should get snapshot", () => {
 			id: orderId,
 			type: OrderType.STOP_LIMIT,
 			side,
-			size: 5,
-			price: stopPrice,
-			stopPrice,
+			size: BigNumber(5),
+			price: BigNumber(stopPrice),
+			stopPrice: BigNumber(stopPrice),
 			timeInForce: TimeInForce.GTC,
 		});
 		ob.add(order);
@@ -181,14 +199,14 @@ void test("it should get snapshot", () => {
 	assert.equal(snapshot.bids.length, 4);
 	assert.equal(snapshot.asks.length, 4);
 
-	const price70 = snapshot.bids.find((x) => x.price === 70);
-	const price80 = snapshot.bids.find((x) => x.price === 80);
-	const price90 = snapshot.bids.find((x) => x.price === 90);
-	const price100 = snapshot.bids.find((x) => x.price === 100);
-	const price110 = snapshot.asks.find((x) => x.price === 110);
-	const price120 = snapshot.asks.find((x) => x.price === 120);
-	const price130 = snapshot.asks.find((x) => x.price === 130);
-	const price140 = snapshot.asks.find((x) => x.price === 140);
+	const price70 = snapshot.bids.find((x) => x.price.isEqualTo(70));
+	const price80 = snapshot.bids.find((x) => x.price.isEqualTo(80));
+	const price90 = snapshot.bids.find((x) => x.price.isEqualTo(90));
+	const price100 = snapshot.bids.find((x) => x.price.isEqualTo(100));
+	const price110 = snapshot.asks.find((x) => x.price.isEqualTo(110));
+	const price120 = snapshot.asks.find((x) => x.price.isEqualTo(120));
+	const price130 = snapshot.asks.find((x) => x.price.isEqualTo(130));
+	const price140 = snapshot.asks.find((x) => x.price.isEqualTo(140));
 
 	assert.equal(price70?.orders.length, 1);
 	assert.equal(price80?.orders.length, 1);

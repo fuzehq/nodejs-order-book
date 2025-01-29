@@ -1,17 +1,18 @@
 /* node:coverage ignore next - Don't know why first and last line of each file count as uncovered */
+import BigNumber from "bignumber.js";
 import Denque from "denque";
 import type { LimitOrder } from "./order";
 
 export class OrderQueue {
-	private readonly _price: number;
-	private _volume: number;
+	private readonly _price: BigNumber;
+	private _volume: BigNumber;
 	// { orderID: index } index in denque
 	private readonly _orders: Denque<LimitOrder>;
 	private _ordersMap: { [key: string]: number } = {};
 
-	constructor(price: number) {
+	constructor(price: BigNumber) {
 		this._price = price;
-		this._volume = 0;
+		this._volume = BigNumber(0);
 		this._orders = new Denque<LimitOrder>();
 	}
 
@@ -25,12 +26,12 @@ export class OrderQueue {
 	};
 
 	// returns price level of the queue
-	price = (): number => {
+	price = (): BigNumber => {
 		return this._price;
 	};
 
 	// returns price level of the queue
-	volume = (): number => {
+	volume = (): BigNumber => {
 		return this._volume;
 	};
 
@@ -46,7 +47,7 @@ export class OrderQueue {
 
 	// adds order to tail of the queue
 	append = (order: LimitOrder): LimitOrder => {
-		this._volume += order.size;
+		this._volume = this._volume.plus(order.size);
 		this._orders.push(order);
 		this._ordersMap[order.id] = this._orders.length - 1;
 		return order;
@@ -54,8 +55,8 @@ export class OrderQueue {
 
 	// sets up new order to list value
 	update = (oldOrder: LimitOrder, newOrder: LimitOrder): void => {
-		this._volume -= oldOrder.size;
-		this._volume += newOrder.size;
+		this._volume = this._volume.minus(oldOrder.size);
+		this._volume = this._volume.plus(newOrder.size);
 		// Remove old order from head
 		this._orders.shift();
 		delete this._ordersMap[oldOrder.id];
@@ -66,7 +67,7 @@ export class OrderQueue {
 
 	// removes order from the queue
 	remove = (order: LimitOrder): void => {
-		this._volume -= order.size;
+		this._volume = this._volume.minus(order.size);
 		const deletedOrderIndex = this._ordersMap[order.id];
 		this._orders.removeOne(deletedOrderIndex);
 		delete this._ordersMap[order.id];
@@ -78,8 +79,8 @@ export class OrderQueue {
 		}
 	};
 
-	updateOrderSize = (order: LimitOrder, size: number): void => {
-		this._volume += size - order.size; // update volume
+	updateOrderSize = (order: LimitOrder, size: BigNumber): void => {
+		this._volume = this._volume.plus(size.minus(order.size)); // update volume
 		order.size = size;
 		order.time = Date.now();
 	};

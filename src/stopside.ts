@@ -1,20 +1,21 @@
 /* node:coverage ignore next - Don't know why first and last line of each file count as uncovered */
+import BigNumber from "bignumber.js";
 import createRBTree from "functional-red-black-tree";
 import { CustomError, ERROR } from "./errors";
 import { StopQueue } from "./stopqueue";
 import { Side, type StopOrder } from "./types";
 
 export class StopSide {
-	private _priceTree: createRBTree.Tree<number, StopQueue>;
+	private _priceTree: createRBTree.Tree<BigNumber, StopQueue>;
 	private _prices: { [key: string]: StopQueue } = {};
 	private readonly _side: Side;
 
 	constructor(side: Side) {
 		const compare =
 			side === Side.SELL
-				? (a: number, b: number) => a - b
-				: (a: number, b: number) => b - a;
-		this._priceTree = createRBTree<number, StopQueue>(compare);
+				? (a: BigNumber, b: BigNumber) => a.minus(b).toNumber()
+				: (a: BigNumber, b: BigNumber) => b.minus(a).toNumber();
+		this._priceTree = createRBTree<BigNumber, StopQueue>(compare);
 		this._side = side;
 	}
 
@@ -31,7 +32,7 @@ export class StopSide {
 	};
 
 	// removes order from definite price level
-	remove = (id: string, stopPrice: number): StopOrder | undefined => {
+	remove = (id: string, stopPrice: BigNumber): StopOrder | undefined => {
 		const strPrice = stopPrice.toString();
 		if (this._prices[strPrice] === undefined) {
 			throw CustomError(ERROR.INVALID_PRICE_LEVEL);
@@ -44,30 +45,30 @@ export class StopSide {
 		return deletedOrder;
 	};
 
-	removePriceLevel = (priceLevel: number): void => {
+	removePriceLevel = (priceLevel: BigNumber): void => {
 		delete this._prices[priceLevel.toString()];
 		this._priceTree = this._priceTree.remove(priceLevel);
 	};
 
 	// Get orders queue between two price levels
-	between = (priceBefore: number, marketPrice: number): StopQueue[] => {
+	between = (priceBefore: BigNumber, marketPrice: BigNumber): StopQueue[] => {
 		const queues: StopQueue[] = [];
 		let lowerBound = priceBefore;
 		let upperBound = marketPrice;
-		const highest = Math.max(priceBefore, marketPrice);
-		const lowest = Math.min(priceBefore, marketPrice);
+		const highest = BigNumber.max(priceBefore, marketPrice);
+		const lowest = BigNumber.min(priceBefore, marketPrice);
 		if (this._side === Side.BUY) {
 			lowerBound = highest;
-			upperBound = lowest - 1;
+			upperBound = lowest.minus(1);
 		} else {
 			lowerBound = lowest;
-			upperBound = highest + 1;
+			upperBound = highest.plus(1);
 		}
 		this._priceTree.forEach(
 			(price, queue) => {
 				if (
-					(this._side === Side.BUY && price >= lowest) ||
-					(this._side === Side.SELL && price <= highest)
+					(this._side === Side.BUY && price.isGreaterThanOrEqualTo(lowest)) ||
+					(this._side === Side.SELL && price.isLessThanOrEqualTo(highest))
 				) {
 					queues.push(queue);
 				}
@@ -78,7 +79,7 @@ export class StopSide {
 		return queues;
 	};
 
-	priceTree = (): createRBTree.Tree<number, StopQueue> => {
+	priceTree = (): createRBTree.Tree<BigNumber, StopQueue> => {
 		return this._priceTree;
 	};
 	/* node:coverage ignore next - Don't know why first and last line of each file count as uncovered */

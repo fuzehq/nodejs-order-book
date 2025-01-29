@@ -7,6 +7,12 @@
     <a href="https://github.com/fasenderos/nodejs-order-book"><img src="https://badgen.net/badge/icon/typescript?icon=typescript&label" alt="Built with TypeScript"></a>
 </p>
 
+# Temporary Fork
+This is a temporary fork of the original [nodejs-order-book](https://github.com/fasenderos/nodejs-order-book).
+
+This breaks the API contract and moves over to BigNumbers for all price and size calculations. This is to allow for more
+precision in the order book.
+
 # Node.js Order Book
 
 <p align="center">

@@ -1,4 +1,5 @@
 /* node:coverage ignore next - Don't know why first and last line of each file count as uncovered */
+import BigNumber from "bignumber.js";
 import createRBTree from "functional-red-black-tree";
 import { CustomError, ERROR } from "./errors";
 import { type LimitOrder, OrderFactory } from "./order";
@@ -6,45 +7,45 @@ import { OrderQueue } from "./orderqueue";
 import { type OrderUpdatePrice, type OrderUpdateSize, Side } from "./types";
 
 export class OrderSide {
-	private _priceTree: createRBTree.Tree<number, OrderQueue>;
+	private _priceTree: createRBTree.Tree<BigNumber, OrderQueue>;
 	private _prices: { [key: string]: OrderQueue } = {};
-	private _volume = 0;
-	private _total = 0;
-	private _numOrders = 0;
-	private _depthSide = 0;
+	private _volume = BigNumber(0);
+	private _total = BigNumber(0);
+	private _numOrders = BigNumber(0);
+	private _depthSide = BigNumber(0);
 	private readonly _side: Side = Side.SELL;
 
 	constructor(side: Side) {
 		const compare =
 			side === Side.SELL
-				? (a: number, b: number) => a - b
-				: (a: number, b: number) => b - a;
-		this._priceTree = createRBTree<number, OrderQueue>(compare);
+				? (a: BigNumber, b: BigNumber) => a.minus(b).toNumber()
+				: (a: BigNumber, b: BigNumber) => b.minus(a).toNumber();
+		this._priceTree = createRBTree<BigNumber, OrderQueue>(compare);
 		this._side = side;
 	}
 
 	// returns amount of orders
-	len = (): number => {
+	len = (): BigNumber => {
 		return this._numOrders;
 	};
 
 	// returns depth of market
-	depth = (): number => {
+	depth = (): BigNumber => {
 		return this._depthSide;
 	};
 
 	// returns total amount of quantity in side
-	volume = (): number => {
+	volume = (): BigNumber => {
 		return this._volume;
 	};
 
 	// returns the total (size * price of each price level) in side
-	total = (): number => {
+	total = (): BigNumber => {
 		return this._total;
 	};
 
 	// returns the price tree in side
-	priceTree = (): createRBTree.Tree<number, OrderQueue> => {
+	priceTree = (): createRBTree.Tree<BigNumber, OrderQueue> => {
 		return this._priceTree;
 	};
 
@@ -56,11 +57,11 @@ export class OrderSide {
 			const priceQueue = new OrderQueue(price);
 			this._prices[strPrice] = priceQueue;
 			this._priceTree = this._priceTree.insert(price, priceQueue);
-			this._depthSide += 1;
+			this._depthSide = this._depthSide.plus(1);
 		}
-		this._numOrders += 1;
-		this._volume += order.size;
-		this._total += order.size * order.price;
+		this._numOrders = this._numOrders.plus(1);
+		this._volume = this._volume.plus(order.size);
+		this._total = this._total.plus(order.size.multipliedBy(order.price));
 		return this._prices[strPrice].append(order);
 	};
 
@@ -75,12 +76,12 @@ export class OrderSide {
 		if (this._prices[strPrice].len() === 0) {
 			delete this._prices[strPrice];
 			this._priceTree = this._priceTree.remove(price);
-			this._depthSide -= 1;
+			this._depthSide = this._depthSide.minus(1);
 		}
 
-		this._numOrders -= 1;
-		this._volume -= order.size;
-		this._total -= order.size * order.price;
+		this._numOrders = this._numOrders.minus(1);
+		this._volume = this._volume.minus(order.size);
+		this._total = this._total.minus(order.size.multipliedBy(order.price));
 		return order;
 	};
 
@@ -106,9 +107,12 @@ export class OrderSide {
 		orderUpdate: OrderUpdateSize,
 	): LimitOrder => {
 		const newOrderPrice = orderUpdate.price ?? oldOrder.price;
-		this._volume += orderUpdate.size - oldOrder.size;
-		this._total +=
-			orderUpdate.size * newOrderPrice - oldOrder.size * oldOrder.price;
+		this._volume = this._volume.plus(orderUpdate.size.minus(oldOrder.size));
+
+		const v1 = orderUpdate.size.multipliedBy(newOrderPrice);
+		const v2 = oldOrder.size.multipliedBy(oldOrder.price);
+		this._total = this._total.plus(v1.minus(v2));
+
 		this._prices[oldOrder.price.toString()].updateOrderSize(
 			oldOrder,
 			orderUpdate.size,
@@ -118,24 +122,28 @@ export class OrderSide {
 
 	// returns max level of price
 	maxPriceQueue = (): OrderQueue | undefined => {
-		if (this._depthSide > 0) {
+		if (this._depthSide.isGreaterThan(0)) {
 			const max =
 				this._side === Side.SELL ? this._priceTree.end : this._priceTree.begin;
 			return max.value;
 		}
+
+		return;
 	};
 
 	// returns min level of price
 	minPriceQueue = (): OrderQueue | undefined => {
-		if (this._depthSide > 0) {
+		if (this._depthSide.isGreaterThan(0)) {
 			const min =
 				this._side === Side.SELL ? this._priceTree.begin : this._priceTree.end;
 			return min.value;
 		}
+
+		return;
 	};
 
 	// returns nearest OrderQueue with price less than given
-	lowerThan = (price: number): OrderQueue | undefined => {
+	lowerThan = (price: BigNumber): OrderQueue | undefined => {
 		const node =
 			this._side === Side.SELL
 				? this._priceTree.lt(price)
@@ -144,7 +152,7 @@ export class OrderSide {
 	};
 
 	// returns nearest OrderQueue with price greater than given
-	greaterThan = (price: number): OrderQueue | undefined => {
+	greaterThan = (price: BigNumber): OrderQueue | undefined => {
 		const node =
 			this._side === Side.SELL
 				? this._priceTree.gt(price)
@@ -167,7 +175,7 @@ export class OrderSide {
 		let level = this.maxPriceQueue();
 		while (level !== undefined) {
 			const volume: string = level.volume().toString();
-			s += `\n${level.price()} -> ${volume}`;
+			s += `\n${level.price().toNumber()} -> ${volume}`;
 			level = this.lowerThan(level.price());
 		}
 		return s;

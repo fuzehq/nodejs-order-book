@@ -1,18 +1,19 @@
+import type BigNumber from "bignumber.js";
 /* node:coverage ignore next - Don't know why first and last line of each file count as uncovered */
 import Denque from "denque";
 import type { StopOrder } from "./types";
 
 export class StopQueue {
-	private readonly _price: number;
+	private readonly _price: BigNumber;
 	private readonly _orders: Denque<StopOrder>;
 	private _ordersMap: { [key: string]: number } = {};
 
-	constructor(price: number) {
+	constructor(price: BigNumber) {
 		this._price = price;
 		this._orders = new Denque<StopOrder>();
 	}
 
-	get price(): number {
+	get price(): BigNumber {
 		return this._price;
 	}
 

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import BigNumber from "bignumber.js";
 import { ErrorCodes, ErrorMessages } from "../src/errors";
 import { OrderFactory } from "../src/order";
 import { StopSide } from "../src/stopside";
@@ -16,10 +17,10 @@ void test("it should append/remove orders from queue on BUY side", () => {
 			type: OrderType.STOP_LIMIT,
 			id: "order1",
 			side: Side.BUY,
-			size: 5,
-			price: 10,
+			size: BigNumber(5),
+			price: BigNumber(10),
 			timeInForce: TimeInForce.GTC,
-			stopPrice: 10,
+			stopPrice: BigNumber(10),
 		});
 		os.append(order);
 		// @ts-expect-error _prices is private
@@ -33,10 +34,10 @@ void test("it should append/remove orders from queue on BUY side", () => {
 			type: OrderType.STOP_LIMIT,
 			id: "order2",
 			side: Side.BUY,
-			size: 5,
-			price: 10,
+			size: BigNumber(5),
+			price: BigNumber(10),
 			timeInForce: TimeInForce.GTC,
-			stopPrice: 10, // same stopPrice as before, so same price level
+			stopPrice: BigNumber(10), // same stopPrice as before, so same price level
 		});
 		os.append(order);
 		// @ts-expect-error _prices is private
@@ -49,8 +50,8 @@ void test("it should append/remove orders from queue on BUY side", () => {
 		const order = OrderFactory.createOrder({
 			type: OrderType.STOP_MARKET,
 			side: Side.BUY,
-			size: 5,
-			stopPrice: 20,
+			size: BigNumber(5),
+			stopPrice: BigNumber(20),
 			timeInForce: TimeInForce.GTC,
 		});
 
@@ -66,13 +67,13 @@ void test("it should append/remove orders from queue on BUY side", () => {
 		// BUY side are in descending order bigger to lower
 		// @ts-expect-error _price is private property
 		const currPrice = curr._price;
-		assert.equal(currPrice < previousPrice, true);
+		assert.equal(currPrice.isLessThan(previousPrice), true);
 		return currPrice;
 	}, Number.POSITIVE_INFINITY);
 
 	{
 		// Remove the first order
-		const response = os.remove("order1", 10);
+		const response = os.remove("order1", BigNumber(10));
 
 		// @ts-expect-error _prices is private
 		assert.equal(Object.keys(os._prices).length, 2);
@@ -83,7 +84,7 @@ void test("it should append/remove orders from queue on BUY side", () => {
 
 	{
 		// Try to remove the same order already deleted
-		const response = os.remove("order1", 10);
+		const response = os.remove("order1", BigNumber(10));
 		// @ts-expect-error _prices is private
 		assert.equal(Object.keys(os._prices).length, 2);
 		// @ts-expect-error _priceTree is private
@@ -93,7 +94,7 @@ void test("it should append/remove orders from queue on BUY side", () => {
 
 	{
 		// Remove the second order order, so the price level is empty
-		const response = os.remove("order2", 10);
+		const response = os.remove("order2", BigNumber(10));
 
 		// @ts-expect-error _prices is private
 		assert.equal(Object.keys(os._prices).length, 1);
@@ -105,7 +106,7 @@ void test("it should append/remove orders from queue on BUY side", () => {
 	// Test for error when price level not exists
 	try {
 		// order1 has been replaced whit updateOrder, so trying to update order1 will throw an error of type INVALID_PRICE_LEVEL
-		os.remove("some-id", 100);
+		os.remove("some-id", BigNumber(100));
 	} catch (error) {
 		assert.equal(error?.message, ErrorMessages.INVALID_PRICE_LEVEL);
 		assert.equal(error?.code, ErrorCodes.INVALID_PRICE_LEVEL);
@@ -123,10 +124,10 @@ void test("it should append/remove orders from queue on SELL side", () => {
 			type: OrderType.STOP_LIMIT,
 			id: "order1",
 			side: Side.SELL,
-			size: 5,
-			price: 10,
+			size: BigNumber(5),
+			price: BigNumber(10),
 			timeInForce: TimeInForce.GTC,
-			stopPrice: 10,
+			stopPrice: BigNumber(10),
 		});
 		os.append(order);
 		// @ts-expect-error _prices is private
@@ -140,10 +141,10 @@ void test("it should append/remove orders from queue on SELL side", () => {
 			type: OrderType.STOP_LIMIT,
 			id: "order2",
 			side: Side.SELL,
-			size: 5,
-			price: 10,
+			size: BigNumber(5),
+			price: BigNumber(10),
 			timeInForce: TimeInForce.GTC,
-			stopPrice: 10, // same stopPrice as before, so same price level
+			stopPrice: BigNumber(10), // same stopPrice as before, so same price level
 		});
 		os.append(order);
 		// @ts-expect-error _prices is private
@@ -156,8 +157,8 @@ void test("it should append/remove orders from queue on SELL side", () => {
 		const order = OrderFactory.createOrder({
 			type: OrderType.STOP_MARKET,
 			side: Side.SELL,
-			size: 5,
-			stopPrice: 20,
+			size: BigNumber(5),
+			stopPrice: BigNumber(20),
 			timeInForce: TimeInForce.GTC,
 		});
 
@@ -173,13 +174,13 @@ void test("it should append/remove orders from queue on SELL side", () => {
 		// SELL side are in ascending order lower to bigger
 		// @ts-expect-error _price is private property
 		const currPrice = curr._price;
-		assert.equal(currPrice > previousPrice, true);
+		assert.equal(currPrice.isGreaterThan(previousPrice), true);
 		return currPrice;
 	}, 0);
 
 	{
 		// Remove the first order
-		const response = os.remove("order1", 10);
+		const response = os.remove("order1", BigNumber(10));
 
 		// @ts-expect-error _prices is private
 		assert.equal(Object.keys(os._prices).length, 2);
@@ -190,7 +191,7 @@ void test("it should append/remove orders from queue on SELL side", () => {
 
 	{
 		// Try to remove the same order already deleted
-		const response = os.remove("order1", 10);
+		const response = os.remove("order1", BigNumber(10));
 		// @ts-expect-error _prices is private
 		assert.equal(Object.keys(os._prices).length, 2);
 		// @ts-expect-error _priceTree is private
@@ -200,7 +201,7 @@ void test("it should append/remove orders from queue on SELL side", () => {
 
 	{
 		// Remove the second order order, so the price level is empty
-		const response = os.remove("order2", 10);
+		const response = os.remove("order2", BigNumber(10));
 
 		// @ts-expect-error _prices is private
 		assert.equal(Object.keys(os._prices).length, 1);
@@ -212,7 +213,7 @@ void test("it should append/remove orders from queue on SELL side", () => {
 	// Test for error when price level not exists
 	try {
 		// order1 has been replaced whit updateOrder, so trying to update order1 will throw an error of type INVALID_PRICE_LEVEL
-		os.remove("some-id", 100);
+		os.remove("some-id", BigNumber(100));
 	} catch (error) {
 		assert.equal(error?.message, ErrorMessages.INVALID_PRICE_LEVEL);
 		assert.equal(error?.code, ErrorCodes.INVALID_PRICE_LEVEL);
@@ -222,7 +223,7 @@ void test("it should append/remove orders from queue on SELL side", () => {
 void test("it should find all queue between upper and lower bound", () => {
 	const appenOrder = (
 		orderId: string,
-		stopPrice: number,
+		stopPrice: BigNumber,
 		side,
 		os: StopSide,
 	): void => {
@@ -230,8 +231,8 @@ void test("it should find all queue between upper and lower bound", () => {
 			type: OrderType.STOP_LIMIT,
 			id: orderId,
 			side,
-			size: 5,
-			price: 10,
+			size: BigNumber(5),
+			price: BigNumber(10),
 			timeInForce: TimeInForce.GTC,
 			stopPrice,
 		});
@@ -241,19 +242,19 @@ void test("it should find all queue between upper and lower bound", () => {
 	{
 		const side = Side.BUY;
 		const os = new StopSide(side);
-		appenOrder("order1", 10, side, os);
-		appenOrder("order1-1", 19.5, side, os);
-		appenOrder("order2", 20, side, os);
-		appenOrder("order2-1", 20, side, os);
-		appenOrder("order2-3", 20, side, os);
-		appenOrder("order3", 30, side, os);
-		appenOrder("order4", 40, side, os);
-		appenOrder("order4-1", 40, side, os);
-		appenOrder("order4-2", 40.5, side, os);
-		appenOrder("order5", 50, side, os);
+		appenOrder("order1", BigNumber(10), side, os);
+		appenOrder("order1-1", BigNumber(19.5), side, os);
+		appenOrder("order2", BigNumber(20), side, os);
+		appenOrder("order2-1", BigNumber(20), side, os);
+		appenOrder("order2-3", BigNumber(20), side, os);
+		appenOrder("order3", BigNumber(30), side, os);
+		appenOrder("order4", BigNumber(40), side, os);
+		appenOrder("order4-1", BigNumber(40), side, os);
+		appenOrder("order4-2", BigNumber(40.5), side, os);
+		appenOrder("order5", BigNumber(50), side, os);
 
 		{
-			const response = os.between(40, 20);
+			const response = os.between(BigNumber(40), BigNumber(20));
 
 			response.forEach((queue) => {
 				// @ts-expect-error _price is private
@@ -264,7 +265,7 @@ void test("it should find all queue between upper and lower bound", () => {
 		}
 
 		{
-			const response = os.between(20, 40);
+			const response = os.between(BigNumber(20), BigNumber(40));
 			response.forEach((queue) => {
 				// @ts-expect-error _price is private
 				assert.equal(queue._price <= 40, true);
@@ -277,19 +278,19 @@ void test("it should find all queue between upper and lower bound", () => {
 	{
 		const side = Side.SELL;
 		const os = new StopSide(side);
-		appenOrder("order1", 10, side, os);
-		appenOrder("order1-1", 19.5, side, os);
-		appenOrder("order2", 20, side, os);
-		appenOrder("order2-1", 20, side, os);
-		appenOrder("order2-3", 20, side, os);
-		appenOrder("order3", 30, side, os);
-		appenOrder("order4", 40, side, os);
-		appenOrder("order4-1", 40, side, os);
-		appenOrder("order4-2", 40.5, side, os);
-		appenOrder("order5", 50, side, os);
+		appenOrder("order1", BigNumber(10), side, os);
+		appenOrder("order1-1", BigNumber(19.5), side, os);
+		appenOrder("order2", BigNumber(20), side, os);
+		appenOrder("order2-1", BigNumber(20), side, os);
+		appenOrder("order2-3", BigNumber(20), side, os);
+		appenOrder("order3", BigNumber(30), side, os);
+		appenOrder("order4", BigNumber(40), side, os);
+		appenOrder("order4-1", BigNumber(40), side, os);
+		appenOrder("order4-2", BigNumber(40.5), side, os);
+		appenOrder("order5", BigNumber(50), side, os);
 
 		{
-			const response = os.between(40, 20);
+			const response = os.between(BigNumber(40), BigNumber(20));
 
 			response.forEach((queue) => {
 				// @ts-expect-error _price is private
@@ -300,7 +301,7 @@ void test("it should find all queue between upper and lower bound", () => {
 		}
 
 		{
-			const response = os.between(20, 40);
+			const response = os.between(BigNumber(20), BigNumber(40));
 			response.forEach((queue) => {
 				// @ts-expect-error _price is private
 				assert.equal(queue._price <= 40, true);

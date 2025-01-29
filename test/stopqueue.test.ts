@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import BigNumber from "bignumber.js";
 import { OrderFactory, StopLimitOrder } from "../src/order";
 import { StopQueue } from "../src/stopqueue";
 import { OrderType, Side, TimeInForce } from "../src/types";
 
 void test("it should append/remove orders from queue", () => {
-	const price = 100;
-	const stopPrice = 90;
+	const price = BigNumber(100);
+	const stopPrice = BigNumber(90);
 	const oq = new StopQueue(price);
 	// Test edge case where head is undefined (queue is empty)
 	assert.equal(oq.removeFromHead(), undefined);
@@ -16,7 +17,7 @@ void test("it should append/remove orders from queue", () => {
 		type: OrderType.STOP_LIMIT,
 		id: "order1",
 		side: Side.SELL,
-		size: 5,
+		size: BigNumber(5),
 		price,
 		stopPrice,
 		timeInForce: TimeInForce.GTC,
@@ -25,7 +26,7 @@ void test("it should append/remove orders from queue", () => {
 		type: OrderType.STOP_LIMIT,
 		id: "order2",
 		side: Side.SELL,
-		size: 5,
+		size: BigNumber(5),
 		price,
 		stopPrice,
 		timeInForce: TimeInForce.GTC,
@@ -44,7 +45,7 @@ void test("it should append/remove orders from queue", () => {
 		type: OrderType.STOP_LIMIT,
 		id: "order3",
 		side: Side.SELL,
-		size: 10,
+		size: BigNumber(10),
 		price,
 		stopPrice,
 		timeInForce: TimeInForce.GTC,
@@ -56,7 +57,7 @@ void test("it should append/remove orders from queue", () => {
 		type: OrderType.STOP_LIMIT,
 		id: "order4",
 		side: Side.SELL,
-		size: 10,
+		size: BigNumber(10),
 		price,
 		stopPrice,
 		timeInForce: TimeInForce.GTC,

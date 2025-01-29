@@ -1,6 +1,5 @@
 /* node:coverage ignore next - Don't know why this line is uncovered */
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const safeStringify = (value: any): string | null => {
+export const safeStringify = (value: unknown): string | null => {
 	try {
 		return JSON.stringify(value);
 	} catch (error) {

@@ -1,4 +1,5 @@
 /* node:coverage disable */
+import type BigNumber from "bignumber.js";
 import type { OrderBookError } from "./errors";
 import type { LimitOrder, StopLimitOrder, StopMarketOrder } from "./order";
 export enum Side {
@@ -31,7 +32,7 @@ export type Order = LimitOrder | StopOrder;
 interface BaseOrderOptions {
 	id?: string;
 	side: Side;
-	size: number;
+	size: BigNumber;
 }
 interface InternalBaseOrderOptions extends BaseOrderOptions {
 	type: OrderType;
@@ -51,44 +52,44 @@ export interface InternalMarketOrderOptions extends IMarketOrderOptions {
  */
 export interface LimitOrderOptions extends MarketOrderOptions {
 	id: string;
-	price: number;
+	price: BigNumber;
 	timeInForce?: TimeInForce;
 	postOnly?: boolean;
 }
 interface ILimitOrderOptions extends InternalBaseOrderOptions {
 	id: string;
-	price: number;
+	price: BigNumber;
 	timeInForce: TimeInForce;
 }
 export interface InternalLimitOrderOptions extends ILimitOrderOptions {
 	type: OrderType.LIMIT;
-	origSize: number;
-	makerQty: number;
-	takerQty: number;
+	origSize: BigNumber;
+	makerQty: BigNumber;
+	takerQty: BigNumber;
 	postOnly?: boolean;
-	ocoStopPrice?: number;
+	ocoStopPrice?: BigNumber;
 }
 
 /**
  * Specific options for a stop market order.
  */
 export interface StopMarketOrderOptions extends MarketOrderOptions {
-	stopPrice: number;
+	stopPrice: BigNumber;
 }
 export interface InternalStopMarketOrderOptions extends IMarketOrderOptions {
 	type: OrderType.STOP_MARKET;
-	stopPrice: number;
+	stopPrice: BigNumber;
 }
 
 /**
  * Specific options for a stop limit order.
  */
 export interface StopLimitOrderOptions extends LimitOrderOptions {
-	stopPrice: number;
+	stopPrice: BigNumber;
 }
 export interface InternalStopLimitOrderOptions extends ILimitOrderOptions {
 	type: OrderType.STOP_LIMIT;
-	stopPrice: number;
+	stopPrice: BigNumber;
 	isOCO?: boolean;
 }
 
@@ -96,7 +97,7 @@ export interface InternalStopLimitOrderOptions extends ILimitOrderOptions {
  * Specific options for oco order.
  */
 export interface OCOOrderOptions extends StopLimitOrderOptions {
-	stopLimitPrice: number;
+	stopLimitPrice: BigNumber;
 	stopLimitTimeInForce?: TimeInForce;
 }
 
@@ -107,8 +108,8 @@ export interface IMarketOrder {
 	id: string;
 	type: OrderType;
 	side: Side;
-	size: number;
-	origSize: number;
+	size: BigNumber;
+	origSize: BigNumber;
 	time: number;
 }
 
@@ -119,13 +120,13 @@ export interface ILimitOrder {
 	id: string;
 	type: OrderType.LIMIT;
 	side: Side;
-	size: number;
-	origSize: number;
-	price: number;
+	size: BigNumber;
+	origSize: BigNumber;
+	price: BigNumber;
 	time: number;
 	timeInForce: TimeInForce;
-	takerQty: number;
-	makerQty: number;
+	takerQty: BigNumber;
+	makerQty: BigNumber;
 }
 
 /**
@@ -135,8 +136,8 @@ export interface IStopMarketOrder {
 	id: string;
 	type: OrderType;
 	side: Side;
-	size: number;
-	stopPrice: number;
+	size: BigNumber;
+	stopPrice: BigNumber;
 	time: number;
 }
 
@@ -147,9 +148,9 @@ export interface IStopLimitOrder {
 	id: string;
 	type: OrderType;
 	side: Side;
-	size: number;
-	price: number;
-	stopPrice: number;
+	size: BigNumber;
+	price: BigNumber;
+	stopPrice: BigNumber;
 	timeInForce: TimeInForce;
 	time: number;
 	isOCO: boolean;
@@ -183,9 +184,9 @@ export interface IProcessOrder {
 	/** The partially processed order, if any. */
 	partial: ILimitOrder | null;
 	/** The quantity that has been processed in the partial order. */
-	partialQuantityProcessed: number;
+	partialQuantityProcessed: BigNumber;
 	/** The remaining quantity that needs to be processed. */
-	quantityLeft: number;
+	quantityLeft: BigNumber;
 	/** The error encountered during order processing, if any. */
 	err: OrderBookError | null;
 	/** Optional journal log entry related to the order processing. */
@@ -193,7 +194,7 @@ export interface IProcessOrder {
 }
 
 export interface ConditionOrderOptions {
-	stopPrice: number;
+	stopPrice: BigNumber;
 }
 
 /**
@@ -366,9 +367,9 @@ export interface OrderBookOptions {
  */
 export interface OrderUpdatePrice {
 	/** New price of the order. */
-	price: number;
+	price: BigNumber;
 	/** New size of the order (optional). */
-	size?: number;
+	size?: BigNumber;
 }
 
 /**
@@ -376,9 +377,9 @@ export interface OrderUpdatePrice {
  */
 export interface OrderUpdateSize {
 	/** New price of the order (optional). */
-	price?: number;
+	price?: BigNumber;
 	/** New size of the order. */
-	size: number;
+	size: BigNumber;
 }
 
 /**
@@ -388,24 +389,24 @@ export interface Snapshot {
 	/** List of ask orders, each with a price and a list of associated orders */
 	asks: Array<{
 		/** Price of the ask order */
-		price: number;
+		price: BigNumber;
 		/** List of orders associated with this price */
 		orders: ILimitOrder[];
 	}>;
 	/** List of bid orders, each with a price and a list of associated orders */
 	bids: Array<{
 		/** Price of the bid order */
-		price: number;
+		price: BigNumber;
 		/** List of orders associated with this price */
 		orders: ILimitOrder[];
 	}>;
 	stopBook: {
 		asks: Array<{
-			price: number;
+			price: BigNumber;
 			orders: IStopOrder[];
 		}>;
 		bids: Array<{
-			price: number;
+			price: BigNumber;
 			orders: IStopOrder[];
 		}>;
 	};

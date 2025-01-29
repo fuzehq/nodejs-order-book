@@ -1,5 +1,6 @@
 /* node:coverage ignore next - Don't know why first and last line of each file count as uncovered */
 import { randomUUID } from "node:crypto";
+import type BigNumber from "bignumber.js";
 import { CustomError, ERROR } from "./errors";
 import {
 	type ILimitOrder,
@@ -18,7 +19,7 @@ import { safeStringify } from "./utils";
 abstract class BaseOrder {
 	readonly _id: string;
 	readonly _side: Side;
-	_size: number;
+	_size: BigNumber;
 	_time: number;
 	constructor(options: OrderOptions) {
 		this._id = options.id ?? randomUUID();
@@ -38,12 +39,12 @@ abstract class BaseOrder {
 	}
 
 	// Getter for order size
-	get size(): number {
+	get size(): BigNumber {
 		return this._size;
 	}
 
 	// Setter for order size
-	set size(size: number) {
+	set size(size: BigNumber) {
 		this._size = size;
 	}
 
@@ -66,14 +67,14 @@ abstract class BaseOrder {
 }
 export class LimitOrder extends BaseOrder {
 	private readonly _type: OrderType.LIMIT;
-	readonly _origSize: number;
-	private _price: number;
+	readonly _origSize: BigNumber;
+	private _price: BigNumber;
 	private readonly _timeInForce: TimeInForce;
-	private readonly _makerQty: number;
-	private readonly _takerQty: number;
+	private readonly _makerQty: BigNumber;
+	private readonly _takerQty: BigNumber;
 	private readonly _postOnly: boolean;
 	// Refers to the linked Stop Limit order stopPrice
-	private readonly _ocoStopPrice?: number;
+	private readonly _ocoStopPrice?: BigNumber;
 	constructor(options: InternalLimitOrderOptions) {
 		super(options);
 		this._type = options.type;
@@ -92,12 +93,12 @@ export class LimitOrder extends BaseOrder {
 	}
 
 	// Getter for order price
-	get price(): number {
+	get price(): BigNumber {
 		return this._price;
 	}
 
 	// Getter for order price
-	set price(price: number) {
+	set price(price: BigNumber) {
 		this._price = price;
 	}
 
@@ -112,21 +113,21 @@ export class LimitOrder extends BaseOrder {
 	}
 
 	// Getter for the original size of the order
-	get origSize(): number {
+	get origSize(): BigNumber {
 		return this._origSize;
 	}
 
 	// Getter for order makerQty
-	get makerQty(): number {
+	get makerQty(): BigNumber {
 		return this._makerQty;
 	}
 
 	// Getter for order takerQty
-	get takerQty(): number {
+	get takerQty(): BigNumber {
 		return this._takerQty;
 	}
 
-	get ocoStopPrice(): number | undefined {
+	get ocoStopPrice(): BigNumber | undefined {
 		return this._ocoStopPrice;
 	}
 
@@ -160,7 +161,7 @@ export class LimitOrder extends BaseOrder {
 
 export class StopMarketOrder extends BaseOrder {
 	private readonly _type: OrderType.STOP_MARKET;
-	private readonly _stopPrice: number;
+	private readonly _stopPrice: BigNumber;
 	constructor(options: InternalStopMarketOrderOptions) {
 		super(options);
 		this._type = options.type;
@@ -173,7 +174,7 @@ export class StopMarketOrder extends BaseOrder {
 	}
 
 	// Getter for order stopPrice
-	get stopPrice(): number {
+	get stopPrice(): BigNumber {
 		return this._stopPrice;
 	}
 
@@ -199,8 +200,8 @@ export class StopMarketOrder extends BaseOrder {
 
 export class StopLimitOrder extends BaseOrder {
 	private readonly _type: OrderType.STOP_LIMIT;
-	private _price: number;
-	private readonly _stopPrice: number;
+	private _price: BigNumber;
+	private readonly _stopPrice: BigNumber;
 	private readonly _timeInForce: TimeInForce;
 	// It's true when there is a linked Limit Order
 	private readonly _isOCO: boolean;
@@ -219,17 +220,17 @@ export class StopLimitOrder extends BaseOrder {
 	}
 
 	// Getter for order price
-	get price(): number {
+	get price(): BigNumber {
 		return this._price;
 	}
 
 	// Getter for order price
-	set price(price: number) {
+	set price(price: BigNumber) {
 		this._price = price;
 	}
 
 	// Getter for order stopPrice
-	get stopPrice(): number {
+	get stopPrice(): BigNumber {
 		return this._stopPrice;
 	}
 

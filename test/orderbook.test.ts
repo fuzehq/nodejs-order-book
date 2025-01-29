@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import BigNumber from "bignumber.js";
 import { ERROR, ErrorCodes, ErrorMessages } from "../src/errors";
 import type { LimitOrder } from "../src/order";
 import { OrderBook } from "../src/orderbook";
@@ -27,8 +28,8 @@ const addDepth = (
 		const response = ob.limit({
 			side: Side.BUY,
 			id: `${prefix}buy-${index}`,
-			size: quantity,
-			price: index,
+			size: BigNumber(quantity),
+			price: BigNumber(index),
 		});
 		if (journal != null && response.log != null) journal.push(response.log);
 	}
@@ -36,8 +37,8 @@ const addDepth = (
 		const response = ob.limit({
 			side: Side.SELL,
 			id: `${prefix}sell-${index}`,
-			size: quantity,
-			price: index,
+			size: BigNumber(quantity),
+			price: BigNumber(index),
 		});
 		if (journal != null && response.log != null) journal.push(response.log);
 	}
@@ -59,12 +60,12 @@ void test("test limit place", () => {
 		const { done, partial, partialQuantityProcessed, err } = ob.limit({
 			side: Side.BUY,
 			id: `buy-${index}`,
-			size,
-			price: index,
+			size: BigNumber(size),
+			price: BigNumber(index),
 		});
 		assert.equal(done.length, 0);
 		assert.equal(partial === null, true);
-		assert.equal(partialQuantityProcessed, 0);
+		assert.equal(partialQuantityProcessed.toNumber(), 0);
 		assert.equal(err === null, true);
 	}
 
@@ -72,28 +73,28 @@ void test("test limit place", () => {
 		const { done, partial, partialQuantityProcessed, err } = ob.limit({
 			side: Side.SELL,
 			id: `sell-${index}`,
-			size,
-			price: index,
+			size: BigNumber(size),
+			price: BigNumber(index),
 		});
 		assert.equal(done.length, 0);
 		assert.equal(partial === null, true);
-		assert.equal(partialQuantityProcessed, 0);
+		assert.equal(partialQuantityProcessed.toNumber(), 0);
 		assert.equal(err === null, true);
 	}
 
 	assert.equal(ob.order("fake") === undefined, true);
 	const orderSell100 = ob.order("sell-100");
 	assert.equal(orderSell100?.side, Side.SELL);
-	assert.equal(orderSell100?.size, size);
-	assert.equal(orderSell100?.price, 100);
+	assert.equal(orderSell100?.size.toNumber(), size);
+	assert.equal(orderSell100?.price.toNumber(), 100);
 
 	const depth = ob.depth();
 
 	depth.forEach((side, index) => {
 		side.forEach((level, subIndex) => {
-			assert.equal(level[1], 2);
+			assert.equal(level[1].toNumber(), 2);
 			const price = index === 0 ? 100 + 10 * subIndex : 90 - 10 * subIndex;
-			assert.equal(level[0], price);
+			assert.equal(level[0].toNumber(), price);
 		});
 	});
 });
@@ -102,60 +103,71 @@ void test("test limit", () => {
 	const ob = new OrderBook();
 
 	addDepth(ob, "", 2);
-	assert.equal(ob.marketPrice, 0);
+	assert.equal(ob.marketPrice.toNumber(), 0);
 	const process1 =
 		// { done, partial, partialQuantityProcessed, quantityLeft, err }
-		ob.limit({ side: Side.BUY, id: "order-b100", size: 1, price: 100 });
+		ob.limit({
+			side: Side.BUY,
+			id: "order-b100",
+			size: BigNumber(1),
+			price: BigNumber(100),
+		});
 
-	assert.equal(ob.marketPrice, 100);
+	assert.equal(ob.marketPrice.toNumber(), 100);
 	assert.equal(process1.err === null, true);
 	assert.equal(process1.done[0].id, "order-b100");
-	assert.equal((process1.done[0] as ILimitOrder).makerQty, 0);
-	assert.equal((process1.done[0] as ILimitOrder).takerQty, 1);
+	assert.equal((process1.done[0] as ILimitOrder).makerQty.toNumber(), 0);
+	assert.equal((process1.done[0] as ILimitOrder).takerQty.toNumber(), 1);
 	assert.equal(
-		(process1.done[0] as ILimitOrder).makerQty +
-			(process1.done[0] as ILimitOrder).takerQty,
-		(process1.done[0] as ILimitOrder).origSize,
+		(process1.done[0] as ILimitOrder).makerQty
+			.plus((process1.done[0] as ILimitOrder).takerQty)
+			.toNumber(),
+		(process1.done[0] as ILimitOrder).origSize.toNumber(),
 	);
 
 	assert.equal(process1.partial?.id, "sell-100");
-	assert.equal(process1.partial?.origSize, 2);
-	assert.equal(process1.partial?.size, 1);
-	assert.equal(process1.partial?.takerQty, 0);
-	assert.equal(process1.partial?.makerQty, 2);
-	assert.equal(process1.partialQuantityProcessed, 1);
-	assert.equal(process1.quantityLeft, 0);
+	assert.equal(process1.partial?.origSize.toNumber(), 2);
+	assert.equal(process1.partial?.size.toNumber(), 1);
+	assert.equal(process1.partial?.takerQty.toNumber(), 0);
+	assert.equal(process1.partial?.makerQty.toNumber(), 2);
+	assert.equal(process1.partialQuantityProcessed.toNumber(), 1);
+	assert.equal(process1.quantityLeft.toNumber(), 0);
 	assert.equal(
-		process1.partialQuantityProcessed + process1.quantityLeft,
-		(process1.done[0] as ILimitOrder).origSize,
+		process1.partialQuantityProcessed.plus(process1.quantityLeft).toNumber(),
+		(process1.done[0] as ILimitOrder).origSize.toNumber(),
 	);
 
 	const process2 =
 		// { done, partial, partialQuantityProcessed, quantityLeft, err } =
-		ob.limit({ side: Side.BUY, id: "order-b150", size: 10, price: 150 });
+		ob.limit({
+			side: Side.BUY,
+			id: "order-b150",
+			size: BigNumber(10),
+			price: BigNumber(150),
+		});
 	assert.equal(process2.err === null, true);
 	assert.equal(process2.done.length, 5);
 	assert.equal(process2.partial?.id, "order-b150");
-	assert.equal(process2.partial?.origSize, 10);
-	assert.equal(process2.partial?.size, 1);
-	assert.equal(process2.partial?.takerQty, 9);
-	assert.equal(process2.partial?.makerQty, 1);
+	assert.equal(process2.partial?.origSize.toNumber(), 10);
+	assert.equal(process2.partial?.size.toNumber(), 1);
+	assert.equal(process2.partial?.takerQty.toNumber(), 9);
+	assert.equal(process2.partial?.makerQty.toNumber(), 1);
 	assert.equal(
-		process2.partial?.takerQty + process2.partial?.makerQty,
-		process2.partial?.origSize,
+		process2.partial?.takerQty.plus(process2.partial?.makerQty).toNumber(),
+		process2.partial?.origSize.toNumber(),
 	);
-	assert.equal(process2.partialQuantityProcessed, 9);
-	assert.equal(process2.quantityLeft, 1);
+	assert.equal(process2.partialQuantityProcessed.toNumber(), 9);
+	assert.equal(process2.quantityLeft.toNumber(), 1);
 	assert.equal(
-		process2.partialQuantityProcessed + process2.quantityLeft,
-		process2.partial?.origSize,
+		process2.partialQuantityProcessed.plus(process2.quantityLeft).toNumber(),
+		process2.partial?.origSize.toNumber(),
 	);
 
 	const process3 = ob.limit({
 		side: Side.SELL,
 		id: "buy-70",
-		size: 11,
-		price: 40,
+		size: BigNumber(11),
+		price: BigNumber(40),
 	});
 	assert.equal(process3.err?.message, ErrorMessages.ORDER_ALREDY_EXISTS);
 	assert.equal(process3.err?.code, ErrorCodes.ORDER_ALREDY_EXISTS);
@@ -163,8 +175,8 @@ void test("test limit", () => {
 	const process4 = ob.limit({
 		side: Side.SELL,
 		id: "fake-70",
-		size: 0,
-		price: 40,
+		size: BigNumber(0),
+		price: BigNumber(40),
 	});
 	assert.equal(process4.err?.message, ErrorMessages.INVALID_QUANTITY);
 	assert.equal(process4.err?.code, ErrorCodes.INVALID_QUANTITY);
@@ -173,8 +185,8 @@ void test("test limit", () => {
 		// @ts-expect-error invalid side
 		side: "unsupported-side",
 		id: "order-70",
-		size: 70,
-		price: 100,
+		size: BigNumber(70),
+		price: BigNumber(100),
 	});
 	assert.equal(process5.err?.message, ErrorMessages.INVALID_SIDE);
 	assert.equal(process5.err?.code, ErrorCodes.INVALID_SIDE);
@@ -185,23 +197,23 @@ void test("test limit", () => {
 	const process6 = ob.createOrder({
 		type: OrderType.LIMIT,
 		side: Side.SELL,
-		size: 11,
-		price: 40,
+		size: BigNumber(11),
+		price: BigNumber(40),
 		id: "order-s40",
 		timeInForce: TimeInForce.GTC,
 	});
-	assert.equal(ob.marketPrice, 50);
+	assert.equal(ob.marketPrice.toNumber(), 50);
 	assert.equal(process6.err === null, true);
 	assert.equal(process6.done.length, 7);
 	assert.equal(process6.partial === null, true);
-	assert.equal(process6.partialQuantityProcessed, 0);
+	assert.equal(process6.partialQuantityProcessed.toNumber(), 0);
 
 	const process7 = ob.limit({
 		side: Side.SELL,
 		id: "fake-wrong-size",
 		// @ts-expect-error size must be a number
 		size: "0",
-		price: 40,
+		price: BigNumber(40),
 	});
 	assert.equal(process7.err?.message, ErrorMessages.INVALID_QUANTITY);
 	assert.equal(process7.err?.code, ErrorCodes.INVALID_QUANTITY);
@@ -211,7 +223,7 @@ void test("test limit", () => {
 		id: "fake-wrong-size",
 		// @ts-expect-error size must be a number
 		size: null,
-		price: 40,
+		price: BigNumber(40),
 	});
 	assert.equal(process8.err?.message, ErrorMessages.INVALID_QUANTITY);
 	assert.equal(process8.err?.code, ErrorCodes.INVALID_QUANTITY);
@@ -219,7 +231,7 @@ void test("test limit", () => {
 	const process9 = ob.limit({
 		side: Side.SELL,
 		id: "fake-wrong-price",
-		size: 10,
+		size: BigNumber(10),
 		// @ts-expect-error price must be a number
 		price: "40",
 	});
@@ -230,7 +242,7 @@ void test("test limit", () => {
 	const process10 = ob.limit({
 		side: Side.SELL,
 		id: "fake-without-price",
-		size: 10,
+		size: BigNumber(10),
 	});
 	assert.equal(process10.err?.message, ErrorMessages.INVALID_PRICE);
 	assert.equal(process10.err?.code, ErrorCodes.INVALID_PRICE);
@@ -238,8 +250,8 @@ void test("test limit", () => {
 	const process11 = ob.limit({
 		side: Side.SELL,
 		id: "unsupported-tif",
-		size: 10,
-		price: 10,
+		size: BigNumber(10),
+		price: BigNumber(10),
 		// @ts-expect-error invalid time in force
 		timeInForce: "FAKE",
 	});
@@ -251,28 +263,28 @@ void test("test limit with postOnly", () => {
 	const ob = new OrderBook();
 
 	addDepth(ob, "", 2);
-	assert.equal(ob.marketPrice, 0);
+	assert.equal(ob.marketPrice.toNumber(), 0);
 	const process1 = ob.limit({
 		side: Side.BUY,
 		id: "order-b90",
-		size: 2,
-		price: 90,
+		size: BigNumber(2),
+		price: BigNumber(90),
 		postOnly: true,
 	});
 	assert.equal(process1.err, null);
-	assert.equal(process1.quantityLeft, 2);
+	assert.equal(process1.quantityLeft.toNumber(), 2);
 
 	const process2 = ob.limit({
 		side: Side.BUY,
 		id: "order-b100",
-		size: 3,
-		price: 100,
+		size: BigNumber(3),
+		price: BigNumber(100),
 		postOnly: true,
 	});
 	assert.equal(process2.err?.message, ErrorMessages.LIMIT_ORDER_POST_ONLY);
 	assert.equal(process2.err?.code, ErrorCodes.LIMIT_ORDER_POST_ONLY);
 
-	assert.equal(process2.quantityLeft, 3);
+	assert.equal(process2.quantityLeft.toNumber(), 3);
 });
 
 void test("test limit FOK and IOC", () => {
@@ -281,8 +293,8 @@ void test("test limit FOK and IOC", () => {
 	const process1 = ob.limit({
 		side: Side.BUY,
 		id: "order-fok-b100",
-		size: 3,
-		price: 100,
+		size: BigNumber(3),
+		price: BigNumber(100),
 		timeInForce: TimeInForce.FOK,
 	});
 	assert.equal(
@@ -294,8 +306,8 @@ void test("test limit FOK and IOC", () => {
 	const process2 = ob.limit({
 		side: Side.SELL,
 		id: "order-fok-s90",
-		size: 3,
-		price: 90,
+		size: BigNumber(3),
+		price: BigNumber(90),
 		timeInForce: TimeInForce.FOK,
 	});
 	assert.equal(
@@ -307,8 +319,8 @@ void test("test limit FOK and IOC", () => {
 	const process3 = ob.limit({
 		side: Side.BUY,
 		id: "buy-order-size-greather-than-order-side-volume",
-		size: 30,
-		price: 100,
+		size: BigNumber(30),
+		price: BigNumber(100),
 		timeInForce: TimeInForce.FOK,
 	});
 	assert.equal(
@@ -320,8 +332,8 @@ void test("test limit FOK and IOC", () => {
 	const process4 = ob.limit({
 		side: Side.SELL,
 		id: "sell-order-size-greather-than-order-side-volume",
-		size: 30,
-		price: 90,
+		size: BigNumber(30),
+		price: BigNumber(90),
 		timeInForce: TimeInForce.FOK,
 	});
 	assert.equal(
@@ -333,8 +345,8 @@ void test("test limit FOK and IOC", () => {
 	ob.limit({
 		side: Side.BUY,
 		id: "order-ioc-b100",
-		size: 3,
-		price: 100,
+		size: BigNumber(3),
+		price: BigNumber(100),
 		timeInForce: TimeInForce.IOC,
 	});
 	assert.equal(ob.order("order-ioc-b100") === undefined, true);
@@ -342,8 +354,8 @@ void test("test limit FOK and IOC", () => {
 	const processIOC = ob.limit({
 		side: Side.SELL,
 		id: "order-ioc-s90",
-		size: 3,
-		price: 90,
+		size: BigNumber(3),
+		price: BigNumber(90),
 		timeInForce: TimeInForce.IOC,
 	});
 	assert.equal(ob.order("order-ioc-s90") === undefined, true);
@@ -352,23 +364,23 @@ void test("test limit FOK and IOC", () => {
 	const processFOKBuy = ob.limit({
 		side: Side.BUY,
 		id: "order-fok-b110",
-		size: 2,
-		price: 120,
+		size: BigNumber(2),
+		price: BigNumber(120),
 		timeInForce: TimeInForce.FOK,
 	});
 
 	assert.equal(processFOKBuy.err === null, true);
-	assert.equal(processFOKBuy.quantityLeft, 0);
+	assert.equal(processFOKBuy.quantityLeft.toNumber(), 0);
 
 	const processFOKSell = ob.limit({
 		side: Side.SELL,
 		id: "order-fok-sell-4-70",
-		size: 4,
-		price: 70,
+		size: BigNumber(4),
+		price: BigNumber(70),
 		timeInForce: TimeInForce.FOK,
 	});
 	assert.equal(processFOKSell.err === null, true);
-	assert.equal(processFOKSell.quantityLeft, 0);
+	assert.equal(processFOKSell.quantityLeft.toNumber(), 0);
 });
 
 void test("test market", () => {
@@ -378,24 +390,28 @@ void test("test market", () => {
 
 	const process1 =
 		// { done, partial, partialQuantityProcessed, quantityLeft, err }
-		ob.market({ side: Side.BUY, size: 3 });
+		ob.market({ side: Side.BUY, size: BigNumber(3) });
 
 	assert.equal(process1.err === null, true);
-	assert.equal(process1.quantityLeft, 0);
-	assert.equal(process1.partialQuantityProcessed, 1);
+	assert.equal(process1.quantityLeft.toNumber(), 0);
+	assert.equal(process1.partialQuantityProcessed.toNumber(), 1);
 
 	// Test also the createOrder method
 	const process3 =
 		// { done, partial, partialQuantityProcessed, quantityLeft, err } =
-		ob.createOrder({ type: OrderType.MARKET, side: Side.SELL, size: 12 });
+		ob.createOrder({
+			type: OrderType.MARKET,
+			side: Side.SELL,
+			size: BigNumber(12),
+		});
 
 	assert.equal(process3.done.length, 5);
 	assert.equal(process3.err === null, true);
 	assert.equal(process3.partial === null, true);
-	assert.equal(process3.partialQuantityProcessed, 0);
-	assert.equal(process3.quantityLeft, 2);
+	assert.equal(process3.partialQuantityProcessed.toNumber(), 0);
+	assert.equal(process3.quantityLeft.toNumber(), 2);
 
-	// @ts-expect-error size must be a number
+	// @ts-expect-error size must be a BigNumber
 	const process4 = ob.market({ side: Side.SELL, size: "0" });
 	assert.equal(process4.err?.message, ErrorMessages.INSUFFICIENT_QUANTITY);
 	assert.equal(process4.err?.code, ErrorCodes.INSUFFICIENT_QUANTITY);
@@ -418,7 +434,7 @@ void test("createOrder error", () => {
 		// @ts-expect-error invalid order type
 		type: "wrong-market-type",
 		side: Side.SELL,
-		size: 10,
+		size: BigNumber(10),
 	});
 	assert.equal(result.err?.message, ErrorMessages.INVALID_ORDER_TYPE);
 	assert.equal(result.err?.code, ErrorCodes.INVALID_ORDER_TYPE);
@@ -428,13 +444,13 @@ void test("createOrder error", () => {
 		type: OrderType.LIMIT,
 		id: "buy-1-at-90",
 		side: Side.BUY,
-		size: 1,
-		price: 90,
+		size: BigNumber(1),
+		price: BigNumber(90),
 	});
 	assert.equal(process1.done.length, 0);
 	assert.equal(process1.partial, null);
-	assert.equal(process1.partialQuantityProcessed, 0);
-	assert.equal(process1.quantityLeft, 1);
+	assert.equal(process1.partialQuantityProcessed.toNumber(), 0);
+	assert.equal(process1.quantityLeft.toNumber(), 1);
 	assert.equal(process1.err, null);
 });
 
@@ -449,15 +465,15 @@ void test("test stop_market order", () => {
 	addDepth(ob, "", 2);
 	// We need to create at least on maket order in order to set
 	// the market price
-	ob.market({ side: Side.BUY, size: 3 });
-	assert.equal(ob.marketPrice, 110);
+	ob.market({ side: Side.BUY, size: BigNumber(3) });
+	assert.equal(ob.marketPrice.toNumber(), 110);
 
 	{
 		// Test stop market BUY wrong stopPrice
 		const wrongStopPrice = ob.stopMarket({
 			side: Side.BUY,
-			size: 1,
-			stopPrice: ob.marketPrice - 10,
+			size: BigNumber(1),
+			stopPrice: ob.marketPrice.minus(10),
 		}); // Below market price
 		assert.equal(
 			wrongStopPrice.err?.message,
@@ -469,7 +485,7 @@ void test("test stop_market order", () => {
 		);
 		const wrongStopPrice2 = ob.stopMarket({
 			side: Side.BUY,
-			size: 1,
+			size: BigNumber(1),
 			stopPrice: ob.marketPrice,
 		}); // Same as market price
 		assert.equal(
@@ -483,7 +499,7 @@ void test("test stop_market order", () => {
 		const wrongOtherOrderOption1 = ob.stopMarket({
 			// @ts-expect-error invalid side
 			side: "wrong-side",
-			size: 1,
+			size: BigNumber(1),
 		});
 		assert.equal(wrongOtherOrderOption1.err != null, true);
 
@@ -493,8 +509,8 @@ void test("test stop_market order", () => {
 
 		// Add a stop market BUY order
 		const beforeMarketPrice = ob.marketPrice;
-		const stopPrice = 120;
-		const size = 1;
+		const stopPrice = BigNumber(120);
+		const size = BigNumber(1);
 		const stopMarketBuy = ob.stopMarket({ side: Side.BUY, size, stopPrice });
 
 		// Market price should be the same as before
@@ -508,7 +524,7 @@ void test("test stop_market order", () => {
 		assert.equal(stopMarketBuy.err, null);
 
 		// Create a market order that activate the stop order
-		const resp = ob.market({ side: Side.BUY, size: 2 });
+		const resp = ob.market({ side: Side.BUY, size: BigNumber(2) });
 		const activatedStopOrder = resp.activated[0];
 		assert.equal(JSON.stringify(activatedStopOrder), JSON.stringify(stopOrder));
 		assert.equal(resp.done.length, 2);
@@ -521,8 +537,8 @@ void test("test stop_market order", () => {
 		// Test stop market BUY wrong stopPrice
 		const wrongStopPrice = ob.stopMarket({
 			side: Side.SELL,
-			size: 1,
-			stopPrice: ob.marketPrice + 10,
+			size: BigNumber(1),
+			stopPrice: ob.marketPrice.plus(10),
 		}); // Above market price
 		assert.equal(
 			wrongStopPrice.err?.message,
@@ -534,7 +550,7 @@ void test("test stop_market order", () => {
 		);
 		const wrongStopPrice2 = ob.stopMarket({
 			side: Side.SELL,
-			size: 1,
+			size: BigNumber(1),
 			stopPrice: ob.marketPrice,
 		}); // Same as market price
 		assert.equal(
@@ -548,8 +564,8 @@ void test("test stop_market order", () => {
 
 		// Add a stop market SELL order
 		const beforeMarketPrice = ob.marketPrice;
-		const stopPrice = 100;
-		const size = 2;
+		const stopPrice = BigNumber(100);
+		const size = BigNumber(2);
 		const stopMarketSell = ob.stopMarket({
 			side: Side.SELL,
 			size,
@@ -567,7 +583,7 @@ void test("test stop_market order", () => {
 		assert.equal(stopMarketSell.err, null);
 
 		// Create a market order that activate the stop order
-		const resp = ob.market({ side: Side.SELL, size: 2 });
+		const resp = ob.market({ side: Side.SELL, size: BigNumber(2) });
 		const activatedStopOrder = resp.activated[0];
 		assert.equal(JSON.stringify(activatedStopOrder), JSON.stringify(stopOrder));
 		assert.equal(resp.done.length, 2);
@@ -577,8 +593,8 @@ void test("test stop_market order", () => {
 
 	{
 		// Use the createOrder method to create a stop order
-		const size = 2;
-		const stopPrice = ob.marketPrice - 10;
+		const size = BigNumber(2);
+		const stopPrice = ob.marketPrice.minus(10);
 		const response = ob.createOrder({
 			type: OrderType.STOP_MARKET,
 			side: Side.SELL,
@@ -588,10 +604,10 @@ void test("test stop_market order", () => {
 		const stopOrder = response.done[0];
 		assert.equal(stopOrder.type, OrderType.STOP_MARKET);
 		assert.equal(stopOrder.side, Side.SELL);
-		assert.equal(stopOrder.size, size);
-		assert.equal(stopOrder.stopPrice, stopPrice);
+		assert.equal(stopOrder.size.toNumber(), size.toNumber());
+		assert.equal(stopOrder.stopPrice.toNumber(), stopPrice.toNumber());
 		assert.equal(response.err, null);
-		assert.equal(response.quantityLeft, 2);
+		assert.equal(response.quantityLeft.toNumber(), 2);
 	}
 });
 
@@ -606,16 +622,16 @@ void test("test stop_limit order", () => {
 	addDepth(ob, "", 2);
 	// We need to create at least on maket order in order to set
 	// the market price
-	ob.market({ side: Side.BUY, size: 3 });
-	assert.equal(ob.marketPrice, 110);
+	ob.market({ side: Side.BUY, size: BigNumber(3) });
+	assert.equal(ob.marketPrice.toNumber(), 110);
 
 	{
 		// Test stop limit BUY wrong stopPrice
 		const wrongStopPrice = ob.stopLimit({
 			id: "fake-id",
 			side: Side.BUY,
-			size: 1,
-			stopPrice: ob.marketPrice - 10, // Below market price
+			size: BigNumber(1),
+			stopPrice: ob.marketPrice.minus(10), // Below market price
 			price: ob.marketPrice,
 		});
 		assert.equal(
@@ -629,7 +645,7 @@ void test("test stop_limit order", () => {
 		const wrongStopPrice2 = ob.stopLimit({
 			id: "fake-id",
 			side: Side.BUY,
-			size: 1,
+			size: BigNumber(1),
 			stopPrice: ob.marketPrice,
 			price: ob.marketPrice,
 		}); // Same as market price
@@ -644,32 +660,32 @@ void test("test stop_limit order", () => {
 		const wrongOtherOrderOption1 = ob.stopLimit({
 			// @ts-expect-error invalid side
 			side: "wrong-side",
-			size: 1,
-			price: 10,
+			size: BigNumber(1),
+			price: BigNumber(10),
 		});
 		assert.equal(wrongOtherOrderOption1.err != null, true);
 
 		// @ts-expect-error size must be greather than 0
 		const wrongOtherOrderOption2 = ob.stopLimit({
 			side: Side.BUY,
-			size: 0,
-			price: 10,
+			size: BigNumber(0),
+			price: BigNumber(10),
 		});
 		assert.equal(wrongOtherOrderOption2.err != null, true);
 
 		// @ts-expect-error price must be greather than 0
 		const wrongOtherOrderOption3 = ob.stopLimit({
 			side: Side.BUY,
-			size: 1,
-			price: 0,
+			size: BigNumber(1),
+			price: BigNumber(0),
 		});
 		assert.equal(wrongOtherOrderOption3.err != null, true);
 
 		// Add a stop limit BUY order
 		const beforeMarketPrice = ob.marketPrice;
-		const stopPrice = 120;
-		const price = 130;
-		const size = 1;
+		const stopPrice = BigNumber(120);
+		const price = BigNumber(130);
+		const size = BigNumber(1);
 		const stopLimitBuy = ob.stopLimit({
 			id: "stop-limit-buy-1",
 			side: Side.BUY,
@@ -692,7 +708,7 @@ void test("test stop_limit order", () => {
 		assert.equal(stopLimitBuy.err, null);
 
 		// Create a market order that activate the stop order
-		const resp = ob.market({ side: Side.BUY, size: 6 });
+		const resp = ob.market({ side: Side.BUY, size: BigNumber(6) });
 		const activatedStopOrder = resp.activated[0];
 		assert.equal(JSON.stringify(activatedStopOrder), JSON.stringify(stopOrder));
 		assert.equal(resp.done.length, 3);
@@ -704,16 +720,16 @@ void test("test stop_limit order", () => {
 		assert.equal(resp.err, null);
 	}
 
-	// addDepth(ob, 'second-run-', 2)
-	ob.market({ side: Side.SELL, size: 1 });
+	// addDepth(ob, "second-run-", 2);
+	ob.market({ side: Side.SELL, size: BigNumber(1) });
 
 	{
 		// Test stop limit SELL wrong stopPrice
 		const wrongStopPrice = ob.stopLimit({
 			id: "fake-id",
 			side: Side.SELL,
-			size: 1,
-			stopPrice: ob.marketPrice + 10, // Above market price
+			size: BigNumber(1),
+			stopPrice: ob.marketPrice.plus(10), // Above market price
 			price: ob.marketPrice,
 		});
 		assert.equal(
@@ -727,7 +743,7 @@ void test("test stop_limit order", () => {
 		const wrongStopPrice2 = ob.stopLimit({
 			id: "fake-id",
 			side: Side.SELL,
-			size: 1,
+			size: BigNumber(1),
 			stopPrice: ob.marketPrice,
 			price: ob.marketPrice,
 		}); // Same as market price
@@ -742,9 +758,9 @@ void test("test stop_limit order", () => {
 
 		// Add a stop limit BUY order
 		const beforeMarketPrice = ob.marketPrice;
-		const stopPrice = 80;
-		const price = 70;
-		const size = 1;
+		const stopPrice = BigNumber(80);
+		const price = BigNumber(70);
+		const size = BigNumber(1);
 		const stopLimitSell = ob.stopLimit({
 			id: "stop-limit-sell-1",
 			side: Side.SELL,
@@ -758,15 +774,15 @@ void test("test stop_limit order", () => {
 		const stopOrder = stopLimitSell.done[0] as IStopLimitOrder;
 		assert.equal(stopOrder.type, OrderType.STOP_LIMIT);
 		assert.equal(stopOrder.side, Side.SELL);
-		assert.equal(stopOrder.size, size);
-		assert.equal(stopOrder.price, price);
-		assert.equal(stopOrder.stopPrice, stopPrice);
+		assert.equal(stopOrder.size.toNumber(), size.toNumber());
+		assert.equal(stopOrder.price.toNumber(), price.toNumber());
+		assert.equal(stopOrder.stopPrice.toNumber(), stopPrice.toNumber());
 		assert.equal(stopOrder.timeInForce, TimeInForce.GTC);
-		assert.equal(stopLimitSell.quantityLeft, size);
+		assert.equal(stopLimitSell.quantityLeft.toNumber(), size.toNumber());
 		assert.equal(stopLimitSell.err, null);
 
 		// Create a market order that activate the stop order
-		const resp = ob.market({ side: Side.SELL, size: 6 });
+		const resp = ob.market({ side: Side.SELL, size: BigNumber(6) });
 		const activatedStopOrder = resp.activated[0];
 		assert.equal(JSON.stringify(activatedStopOrder), JSON.stringify(stopOrder));
 		assert.equal(resp.done.length, 3);
@@ -780,9 +796,9 @@ void test("test stop_limit order", () => {
 
 	{
 		// Use the createOrder method to create a stop order
-		const size = 2;
-		const stopPrice = ob.marketPrice - 10;
-		const price = ob.marketPrice - 10;
+		const size = BigNumber(2);
+		const stopPrice = ob.marketPrice.minus(10);
+		const price = ob.marketPrice.minus(10);
 		const response = ob.createOrder({
 			type: OrderType.STOP_LIMIT,
 			id: "some-order-id",
@@ -794,11 +810,11 @@ void test("test stop_limit order", () => {
 		const stopOrder = response.done[0] as IStopLimitOrder;
 		assert.equal(stopOrder.type, OrderType.STOP_LIMIT);
 		assert.equal(stopOrder.side, Side.SELL);
-		assert.equal(stopOrder.size, size);
-		assert.equal(stopOrder.stopPrice, stopPrice);
-		assert.equal(stopOrder.price, price);
+		assert.equal(stopOrder.size.toNumber(), size.toNumber());
+		assert.equal(stopOrder.stopPrice.toNumber(), stopPrice.toNumber());
+		assert.equal(stopOrder.price.toNumber(), price.toNumber());
 		assert.equal(response.err, null);
-		assert.equal(response.quantityLeft, 2);
+		assert.equal(response.quantityLeft.toNumber(), 2);
 	}
 });
 
@@ -813,21 +829,21 @@ void test("test oco order", () => {
 	addDepth(ob, "", 2);
 	// We need to create at least on maket order in order to set
 	// the market price
-	ob.market({ side: Side.BUY, size: 3, id: "some-fake-order" });
-	assert.equal(ob.marketPrice, 110);
+	ob.market({ side: Side.BUY, size: BigNumber(3), id: "some-fake-order" });
+	assert.equal(ob.marketPrice.toNumber(), 110);
 
 	const validate = (
 		orderId: string,
 		side: Side,
-		price: number,
-		stopPrice: number,
-		stopLimitPrice: number,
+		price: BigNumber,
+		stopPrice: BigNumber,
+		stopLimitPrice: BigNumber,
 		expect: ERROR | ((response: IProcessOrder) => void),
 	): void => {
 		const order = ob.oco({
 			id: orderId,
 			side,
-			size: 1,
+			size: BigNumber(1),
 			price,
 			stopPrice,
 			stopLimitPrice,
@@ -846,8 +862,8 @@ void test("test oco order", () => {
 	validate(
 		"fake-id",
 		Side.BUY,
-		ob.marketPrice - 10,
-		ob.marketPrice - 10,
+		ob.marketPrice.minus(10),
+		ob.marketPrice.minus(10),
 		ob.marketPrice,
 		ERROR.INVALID_CONDITIONAL_ORDER,
 	);
@@ -855,51 +871,65 @@ void test("test oco order", () => {
 	validate(
 		"fake-id",
 		Side.BUY,
-		ob.marketPrice + 10,
-		ob.marketPrice + 10,
+		ob.marketPrice.plus(10),
+		ob.marketPrice.plus(10),
 		ob.marketPrice,
 		ERROR.INVALID_CONDITIONAL_ORDER,
 	);
 
 	// Here marketPrice is 110, lowest sell is 110 and highest buy is 90
 	// valid OCO with limit to 100 and stopLimit to 120
-	validate("oco-buy-1", Side.BUY, 100, 120, 121, (response) => {
-		const order = response.done[0] as IStopLimitOrder;
-		assert.equal(order.type, OrderType.STOP_LIMIT);
-		assert.equal(order.side, Side.BUY);
-		assert.equal(order.stopPrice === 120, true);
-		assert.equal(order.price === 121, true);
-		assert.equal(order.isOCO, true);
-		// The limit oco must be the only one inserted in the price level 100
-		// @ts-expect-error bids is private
-		assert.equal(ob.bids.maxPriceQueue()?.price(), 100);
-		// @ts-expect-error bids is private
-		assert.equal(ob.bids.maxPriceQueue()?.tail()?.id, "oco-buy-1");
-	});
+	validate(
+		"oco-buy-1",
+		Side.BUY,
+		BigNumber(100),
+		BigNumber(120),
+		BigNumber(121),
+		(response) => {
+			const order = response.done[0] as IStopLimitOrder;
+			assert.equal(order.type, OrderType.STOP_LIMIT);
+			assert.equal(order.side, Side.BUY);
+			assert.equal(order.stopPrice.isEqualTo(120), true);
+			assert.equal(order.price.isEqualTo(121), true);
+			assert.equal(order.isOCO, true);
+			// The limit oco must be the only one inserted in the price level 100
+			// @ts-expect-error bids is private
+			assert.equal(ob.bids.maxPriceQueue()?.price().toNumber(), 100);
+			// @ts-expect-error bids is private
+			assert.equal(ob.bids.maxPriceQueue()?.tail()?.id, "oco-buy-1");
+		},
+	);
 
 	// Here marketPrice is 110, lowest sell is 110 and highest buy is 90
 	// valid OCO with limit to 100 and stopLimit to 120
-	validate("oco-buy-2", Side.BUY, 100, 120, 121, (response) => {
-		const order = response.done[0] as IStopLimitOrder;
-		assert.equal(order.type, OrderType.STOP_LIMIT);
-		assert.equal(order.side, Side.BUY);
-		assert.equal(order.stopPrice === 120, true);
-		assert.equal(order.price === 121, true);
-		assert.equal(order.isOCO, true);
-		// The limit oco must be the only one inserted in the price level 100
-		// @ts-expect-error bids is private
-		assert.equal(ob.bids.maxPriceQueue()?.price(), 100);
-		// @ts-expect-error bids is private
-		assert.equal(ob.bids.maxPriceQueue()?.tail()?.id, "oco-buy-2");
-	});
+	validate(
+		"oco-buy-2",
+		Side.BUY,
+		BigNumber(100),
+		BigNumber(120),
+		BigNumber(121),
+		(response) => {
+			const order = response.done[0] as IStopLimitOrder;
+			assert.equal(order.type, OrderType.STOP_LIMIT);
+			assert.equal(order.side, Side.BUY);
+			assert.equal(order.stopPrice.isEqualTo(120), true);
+			assert.equal(order.price.isEqualTo(121), true);
+			assert.equal(order.isOCO, true);
+			// The limit oco must be the only one inserted in the price level 100
+			// @ts-expect-error bids is private
+			assert.equal(ob.bids.maxPriceQueue()?.price().toNumber(), 100);
+			// @ts-expect-error bids is private
+			assert.equal(ob.bids.maxPriceQueue()?.tail()?.id, "oco-buy-2");
+		},
+	);
 
 	// Test OCO Sell
 	// wrong stopPrice
 	validate(
 		"fake-id",
 		Side.SELL,
-		ob.marketPrice + 10,
-		ob.marketPrice + 10,
+		ob.marketPrice.plus(10),
+		ob.marketPrice.plus(10),
 		ob.marketPrice,
 		ERROR.INVALID_CONDITIONAL_ORDER,
 	);
@@ -907,39 +937,53 @@ void test("test oco order", () => {
 	validate(
 		"fake-id",
 		Side.SELL,
-		ob.marketPrice - 10,
-		ob.marketPrice - 10,
+		ob.marketPrice.minus(10),
+		ob.marketPrice.minus(10),
 		ob.marketPrice,
 		ERROR.INVALID_CONDITIONAL_ORDER,
 	);
 
 	// Here marketPrice is 110, lowest sell is 110 and highest buy is 100
 	// valid OCO with limit to 120 and stopLimit to 100
-	validate("oco-sell-1", Side.SELL, 120, 100, 99, (response) => {
-		const order = response.done[0] as IStopLimitOrder;
-		assert.equal(order.type, OrderType.STOP_LIMIT);
-		assert.equal(order.side, Side.SELL);
-		assert.equal(order.stopPrice === 100, true);
-		assert.equal(order.price === 99, true);
-		assert.equal(order.isOCO, true);
-		// The limit oco must be in the tail of the price level 120
-		// @ts-expect-error bids is private
-		assert.equal(ob.asks._prices[120].tail()?.id === "oco-sell-1", true);
-	});
+	validate(
+		"oco-sell-1",
+		Side.SELL,
+		BigNumber(120),
+		BigNumber(100),
+		BigNumber(99),
+		(response) => {
+			const order = response.done[0] as IStopLimitOrder;
+			assert.equal(order.type, OrderType.STOP_LIMIT);
+			assert.equal(order.side, Side.SELL);
+			assert.equal(order.stopPrice.toNumber() === 100, true);
+			assert.equal(order.price.toNumber() === 99, true);
+			assert.equal(order.isOCO, true);
+			// The limit oco must be in the tail of the price level 120
+			// @ts-expect-error bids is private
+			assert.equal(ob.asks._prices[120].tail()?.id === "oco-sell-1", true);
+		},
+	);
 
 	//  Here marketPrice is 110, lowest sell is 110 and highest buy is 90
 	//  valid OCO with limit to 120 and stopLimit to 100
-	validate("oco-sell-2", Side.SELL, 120, 100, 99, (response) => {
-		const order = response.done[0] as IStopLimitOrder;
-		assert.equal(order.type, OrderType.STOP_LIMIT);
-		assert.equal(order.side, Side.SELL);
-		assert.equal(order.stopPrice === 100, true);
-		assert.equal(order.price === 99, true);
-		assert.equal(order.isOCO, true);
-		// The limit oco must be in the tail of the price level 120
-		// @ts-expect-error bids is private
-		assert.equal(ob.asks._prices[120].tail()?.id === "oco-sell-2", true);
-	});
+	validate(
+		"oco-sell-2",
+		Side.SELL,
+		BigNumber(120),
+		BigNumber(100),
+		BigNumber(99),
+		(response) => {
+			const order = response.done[0] as IStopLimitOrder;
+			assert.equal(order.type, OrderType.STOP_LIMIT);
+			assert.equal(order.side, Side.SELL);
+			assert.equal(order.stopPrice.toNumber() === 100, true);
+			assert.equal(order.price.toNumber() === 99, true);
+			assert.equal(order.isOCO, true);
+			// The limit oco must be in the tail of the price level 120
+			// @ts-expect-error bids is private
+			assert.equal(ob.asks._prices[120].tail()?.id === "oco-sell-2", true);
+		},
+	);
 
 	// Removing the limit order should remove also the stop limit
 	const response = ob.cancel("oco-sell-2");
@@ -951,17 +995,17 @@ void test("test oco order", () => {
 		const response = ob.createOrder({
 			id: "oco-sell-2",
 			type: OrderType.OCO,
-			size: 1,
+			size: BigNumber(1),
 			side: Side.SELL,
-			price: 120,
-			stopPrice: 100,
-			stopLimitPrice: 99,
+			price: BigNumber(120),
+			stopPrice: BigNumber(100),
+			stopLimitPrice: BigNumber(99),
 		});
 		const order = response.done[0] as IStopLimitOrder;
 		assert.equal(order.type, OrderType.STOP_LIMIT);
 		assert.equal(order.side, Side.SELL);
-		assert.equal(order.stopPrice === 100, true);
-		assert.equal(order.price === 99, true);
+		assert.equal(order.stopPrice.toNumber() === 100, true);
+		assert.equal(order.price.toNumber() === 99, true);
 		assert.equal(order.isOCO, true);
 		// The limit oco must be in the tail of the price level 120
 		// @ts-expect-error bids is private
@@ -969,7 +1013,7 @@ void test("test oco order", () => {
 	}
 
 	{
-		const response = ob.market({ side: Side.SELL, size: 1 });
+		const response = ob.market({ side: Side.SELL, size: BigNumber(1) });
 		// market order match against the limit order oco-buy-1 and activate the two stop limit
 		// orders of the oco sell.
 		assert.equal(response.done[0]?.id === "oco-buy-1", true);
@@ -982,7 +1026,7 @@ void test("test oco order", () => {
 
 		// While the second stop limit oco-sell-2 go to the order book
 		assert.equal(response.partial?.id === "oco-sell-2", true);
-		assert.equal(response.partialQuantityProcessed, 0);
+		assert.equal(response.partialQuantityProcessed.toNumber(), 0);
 
 		// Both the side of the stop book must be empty
 		// @ts-expect-error stopBook is private
@@ -997,10 +1041,10 @@ void test("test modify", () => {
 
 	addDepth(ob, "", 2);
 
-	const initialPrice1 = 52;
-	const initialSize1 = 1000;
-	const initialPrice2 = 200;
-	const initialSize2 = 1000;
+	const initialPrice1 = BigNumber(52);
+	const initialSize1 = BigNumber(1000);
+	const initialPrice2 = BigNumber(200);
+	const initialSize2 = BigNumber(1000);
 	ob.limit({
 		side: Side.BUY,
 		id: "first-order",
@@ -1016,7 +1060,7 @@ void test("test modify", () => {
 
 	{
 		// SIDE BUY
-		const newSize = 990;
+		const newSize = BigNumber(990);
 		// Test update size
 		let response = ob.modify("first-order", { size: newSize });
 		assert.equal(response?.done.length, 0);
@@ -1024,7 +1068,7 @@ void test("test modify", () => {
 		assert.equal(response?.quantityLeft, newSize);
 
 		// Test passing an invalid price
-		response = ob.modify("first-order", { price: 0 });
+		response = ob.modify("first-order", { price: BigNumber(0) });
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1032,7 +1076,7 @@ void test("test modify", () => {
 		assert.equal(response?.err?.code, ErrorCodes.INVALID_PRICE_OR_QUANTITY);
 
 		// Test passing an invalid size
-		response = ob.modify("first-order", { size: -1 });
+		response = ob.modify("first-order", { size: BigNumber(-1) });
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1040,7 +1084,10 @@ void test("test modify", () => {
 		assert.equal(response?.err?.code, ErrorCodes.INVALID_PRICE_OR_QUANTITY);
 
 		// Test passing an invalid size and price
-		response = ob.modify("first-order", { size: -1, price: 0 });
+		response = ob.modify("first-order", {
+			size: BigNumber(-1),
+			price: BigNumber(0),
+		});
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1048,7 +1095,7 @@ void test("test modify", () => {
 		assert.equal(response?.err?.code, ErrorCodes.INVALID_PRICE_OR_QUANTITY);
 
 		// Test passing an invalid price
-		response = ob.modify("first-order", { price: 0 });
+		response = ob.modify("first-order", { price: BigNumber(0) });
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1056,7 +1103,7 @@ void test("test modify", () => {
 		assert.equal(response?.err?.code, ErrorCodes.INVALID_PRICE_OR_QUANTITY);
 
 		// Test passing an invalid size
-		response = ob.modify("first-order", { size: -1 });
+		response = ob.modify("first-order", { size: BigNumber(-1) });
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1074,46 +1121,64 @@ void test("test modify", () => {
 
 		// Test update price
 		const newPrice = 82;
-		response = ob.modify("first-order", { price: newPrice, size: newSize });
+		response = ob.modify("first-order", {
+			price: BigNumber(newPrice),
+			size: BigNumber(newSize),
+		});
 		assert.equal(response?.done.length, 0);
 		assert.equal(response?.err, null);
-		assert.equal(response?.quantityLeft, newSize);
-		assert.equal(ob.order("first-order")?.price, newPrice);
+		assert.equal(response?.quantityLeft.toNumber(), newSize.toNumber());
+		assert.equal(ob.order("first-order")?.price.toNumber(), newPrice);
 
 		// @ts-expect-error properties bids and _priceTree are private
 		const bookOrdersSize = ob.asks._priceTree.values
-			.filter((queue) => queue.price() <= 130)
+			.filter((queue) => queue.price().toNumber() <= 130)
 			.map((queue) =>
 				queue
 					.toArray()
-					.reduce((acc: number, curr: LimitOrder) => acc + curr.size, 0),
+					.reduce(
+						(acc: BigNumber, curr: LimitOrder) => acc.plus(curr.size),
+						BigNumber(0),
+					),
 			)
-			.reduce((acc: number, curr: number) => acc + curr, 0);
+			.reduce(
+				(acc: BigNumber, curr: BigNumber) => acc.plus(curr),
+				BigNumber(0),
+			);
 
 		// Test modify price order that cross the market price and don't fill completely
-		response = ob.modify("first-order", { price: 130 });
+		response = ob.modify("first-order", { price: BigNumber(130) });
 		const completedOrders = response?.done.map((order) => order.id);
 		assert.equal(
 			completedOrders?.join(),
 			["sell-100", "sell-110", "sell-120", "sell-130"].join(),
 		);
 		assert.equal(response?.partial?.id, "first-order");
-		assert.equal(response?.partial?.size, newSize - bookOrdersSize);
-		assert.equal(response?.partialQuantityProcessed, bookOrdersSize);
-		assert.equal(response?.quantityLeft, newSize - bookOrdersSize);
+		assert.equal(
+			response?.partial?.size.toNumber(),
+			newSize.minus(bookOrdersSize).toNumber(),
+		);
+		assert.equal(
+			response?.partialQuantityProcessed.toNumber(),
+			bookOrdersSize.toNumber(),
+		);
+		assert.equal(
+			response?.quantityLeft.toNumber(),
+			newSize.minus(bookOrdersSize).toNumber(),
+		);
 	}
 
 	{
 		// SIDE SELL
 		const newSize = 990;
 		// Test update size
-		let response = ob.modify("second-order", { size: newSize });
+		let response = ob.modify("second-order", { size: BigNumber(newSize) });
 		assert.equal(response?.done.length, 0);
 		assert.equal(response?.err, null);
-		assert.equal(response?.quantityLeft, newSize);
+		assert.equal(response?.quantityLeft.toNumber(), newSize);
 
 		// Test passing an invalid price
-		response = ob.modify("second-order", { price: 0 });
+		response = ob.modify("second-order", { price: BigNumber(0) });
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1121,7 +1186,7 @@ void test("test modify", () => {
 		assert.equal(response?.err?.code, ErrorCodes.INVALID_PRICE_OR_QUANTITY);
 
 		// Test passing an invalid size
-		response = ob.modify("second-order", { size: -1 });
+		response = ob.modify("second-order", { size: BigNumber(-1) });
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1129,7 +1194,10 @@ void test("test modify", () => {
 		assert.equal(response?.err?.code, ErrorCodes.INVALID_PRICE_OR_QUANTITY);
 
 		// Test passing an invalid size and price
-		response = ob.modify("second-order", { size: -1, price: 0 });
+		response = ob.modify("second-order", {
+			size: BigNumber(-1),
+			price: BigNumber(0),
+		});
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1137,7 +1205,7 @@ void test("test modify", () => {
 		assert.equal(response?.err?.code, ErrorCodes.INVALID_PRICE_OR_QUANTITY);
 
 		// Test passing an invalid price
-		response = ob.modify("second-order", { price: 0 });
+		response = ob.modify("second-order", { price: BigNumber(0) });
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1145,7 +1213,7 @@ void test("test modify", () => {
 		assert.equal(response?.err?.code, ErrorCodes.INVALID_PRICE_OR_QUANTITY);
 
 		// Test passing an invalid size
-		response = ob.modify("second-order", { size: -1 });
+		response = ob.modify("second-order", { size: BigNumber(-1) });
 		assert.equal(
 			response?.err?.message,
 			ErrorMessages.INVALID_PRICE_OR_QUANTITY,
@@ -1163,40 +1231,58 @@ void test("test modify", () => {
 
 		// Test update price
 		const newPrice = 250;
-		response = ob.modify("second-order", { price: newPrice, size: newSize });
+		response = ob.modify("second-order", {
+			price: BigNumber(newPrice),
+			size: BigNumber(newSize),
+		});
 		assert.equal(response?.done.length, 0);
 		assert.equal(response?.err, null);
-		assert.equal(response?.quantityLeft, newSize);
-		assert.equal(ob.order("second-order")?.price, newPrice);
+		assert.equal(response?.quantityLeft.toNumber(), newSize);
+		assert.equal(ob.order("second-order")?.price.toNumber(), newPrice);
 
 		// @ts-expect-error properties bids and _priceTree are private
 		const bookOrdersSize = ob.bids._priceTree.values
-			.filter((queue) => queue.price() >= 80)
+			.filter((queue) => queue.price().isGreaterThanOrEqualTo(80))
 			.map((queue) =>
 				queue
 					.toArray()
-					.reduce((acc: number, curr: LimitOrder) => acc + curr.size, 0),
+					.reduce(
+						(acc: BigNumber, curr: LimitOrder) => acc.plus(curr.size),
+						BigNumber(0),
+					),
 			)
-			.reduce((acc: number, curr: number) => acc + curr, 0);
+			.reduce(
+				(acc: BigNumber, curr: BigNumber) => acc.plus(curr),
+				BigNumber(0),
+			);
 
 		// Test modify price order that cross the market price
-		response = ob.modify("second-order", { price: 80 });
+		response = ob.modify("second-order", { price: BigNumber(80) });
 		const completedOrders = response?.done.map((order) => order.id);
 		assert.equal(
 			completedOrders?.join(),
 			["first-order", "buy-90", "buy-80"].join(),
 		);
 		assert.equal(response?.partial?.id, "second-order");
-		assert.equal(response?.partial?.size, newSize - bookOrdersSize);
-		assert.equal(response?.partialQuantityProcessed, bookOrdersSize);
-		assert.equal(response?.quantityLeft, newSize - bookOrdersSize);
+		assert.equal(
+			response?.partial?.size.toNumber(),
+			newSize - bookOrdersSize.toNumber(),
+		);
+		assert.equal(
+			response?.partialQuantityProcessed.toNumber(),
+			bookOrdersSize.toNumber(),
+		);
+		assert.equal(
+			response?.quantityLeft.toNumber(),
+			newSize - bookOrdersSize.toNumber(),
+		);
 	}
 
 	// Test modify a non-existent order without passing size
-	const resp = ob.modify("non-existent-order", { price: 123 });
+	const resp = ob.modify("non-existent-order", { price: BigNumber(123) });
 	assert.equal(resp.err?.message, ErrorMessages.ORDER_NOT_FOUND);
 	assert.equal(resp.err?.code, ErrorCodes.ORDER_NOT_FOUND);
-	assert.equal(resp.quantityLeft, 0);
+	assert.equal(resp.quantityLeft.toNumber(), 0);
 });
 
 void test("test priceCalculation", () => {
@@ -1206,27 +1292,27 @@ void test("test priceCalculation", () => {
 	addDepth(ob, "10-", 10);
 	addDepth(ob, "15-", 10);
 
-	const calc1 = ob.calculateMarketPrice(Side.BUY, 115);
+	const calc1 = ob.calculateMarketPrice(Side.BUY, BigNumber(115));
 
 	assert.equal(calc1.err === null, true);
-	assert.equal(calc1.price, 13150);
+	assert.equal(calc1.price.toNumber(), 13150);
 
-	const calc2 = ob.calculateMarketPrice(Side.BUY, 200);
+	const calc2 = ob.calculateMarketPrice(Side.BUY, BigNumber(200));
 
 	assert.equal(calc2.err?.message, ErrorMessages.INSUFFICIENT_QUANTITY);
 	assert.equal(calc2.err?.code, ErrorCodes.INSUFFICIENT_QUANTITY);
-	assert.equal(calc2.price, 18000);
+	assert.equal(calc2.price.toNumber(), 18000);
 
-	const calc3 = ob.calculateMarketPrice(Side.SELL, 115);
+	const calc3 = ob.calculateMarketPrice(Side.SELL, BigNumber(115));
 
 	assert.equal(calc3.err === null, true);
-	assert.equal(calc3.price, 8700);
+	assert.equal(calc3.price.toNumber(), 8700);
 
-	const calc4 = ob.calculateMarketPrice(Side.SELL, 200);
+	const calc4 = ob.calculateMarketPrice(Side.SELL, BigNumber(200));
 
 	assert.equal(calc4.err?.message, ErrorMessages.INSUFFICIENT_QUANTITY);
 	assert.equal(calc4.err?.code, ErrorCodes.INSUFFICIENT_QUANTITY);
-	assert.equal(calc4.price, 10500);
+	assert.equal(calc4.price.toNumber(), 10500);
 });
 
 void test("orderbook enableJournaling option", () => {
@@ -1236,8 +1322,8 @@ void test("orderbook enableJournaling option", () => {
 		const response = ob.limit({
 			side: Side.BUY,
 			id: "first-order",
-			size: 50,
-			price: 100,
+			size: BigNumber(50),
+			price: BigNumber(100),
 		});
 		assert.equal(response.log?.opId, 1);
 		assert.equal(typeof response.log?.ts, "number");
@@ -1245,30 +1331,30 @@ void test("orderbook enableJournaling option", () => {
 		assert.deepStrictEqual(response.log?.o, {
 			side: Side.BUY,
 			id: "first-order",
-			size: 50,
-			price: 100,
+			size: BigNumber(50),
+			price: BigNumber(100),
 		});
 	}
 
 	{
-		const response = ob.market({ side: Side.BUY, size: 50 });
+		const response = ob.market({ side: Side.BUY, size: BigNumber(50) });
 		assert.equal(response.log?.opId, 2);
 		assert.equal(typeof response.log?.ts, "number");
 		assert.equal(response.log?.op, "m");
 		assert.deepStrictEqual(response.log?.o, {
 			side: Side.BUY,
-			size: 50,
+			size: BigNumber(50),
 		});
 	}
 
 	{
-		const response = ob.modify("first-order", { size: 55 });
+		const response = ob.modify("first-order", { size: BigNumber(55) });
 		assert.equal(response.log?.opId, 3);
 		assert.equal(typeof response.log?.ts, "number");
 		assert.equal(response.log?.op, "u");
 		assert.deepStrictEqual(response.log?.o, {
 			orderID: "first-order",
-			orderUpdate: { size: 55 },
+			orderUpdate: { size: BigNumber(55) },
 		});
 	}
 
@@ -1295,7 +1381,7 @@ void test("orderbook replayJournal", () => {
 
 	{
 		// Add Market Order
-		const response = ob.market({ side: Side.BUY, size: 3 });
+		const response = ob.market({ side: Side.BUY, size: BigNumber(3) });
 		if (response.log != null) journal.push(response.log);
 	}
 
@@ -1304,8 +1390,8 @@ void test("orderbook replayJournal", () => {
 		const response = ob.limit({
 			side: Side.BUY,
 			id: "limit-order-b100",
-			size: 1,
-			price: 100,
+			size: BigNumber(1),
+			price: BigNumber(100),
 		});
 		if (response.log != null) journal.push(response.log);
 	}
@@ -1314,8 +1400,8 @@ void test("orderbook replayJournal", () => {
 		// Add Stop Market BUY Order
 		const response = ob.stopMarket({
 			side: Side.BUY,
-			size: 1,
-			stopPrice: 120,
+			size: BigNumber(1),
+			stopPrice: BigNumber(120),
 		});
 		if (response.log != null) journal.push(response.log);
 	}
@@ -1324,8 +1410,8 @@ void test("orderbook replayJournal", () => {
 		// Add Stop Market SELL Order
 		const response = ob.stopMarket({
 			side: Side.SELL,
-			size: 1,
-			stopPrice: 80,
+			size: BigNumber(1),
+			stopPrice: BigNumber(80),
 		});
 		if (response.log != null) journal.push(response.log);
 	}
@@ -1335,9 +1421,9 @@ void test("orderbook replayJournal", () => {
 		const response = ob.stopLimit({
 			side: Side.BUY,
 			id: "stop-limit-order-b130",
-			size: 1,
-			price: 130,
-			stopPrice: 125,
+			size: BigNumber(1),
+			price: BigNumber(130),
+			stopPrice: BigNumber(125),
 		});
 		if (response.log != null) journal.push(response.log);
 	}
@@ -1347,9 +1433,9 @@ void test("orderbook replayJournal", () => {
 		const response = ob.stopLimit({
 			side: Side.SELL,
 			id: "stop-limit-order-b70",
-			size: 1,
-			price: 70,
-			stopPrice: 75,
+			size: BigNumber(1),
+			price: BigNumber(70),
+			stopPrice: BigNumber(75),
 		});
 		if (response.log != null) journal.push(response.log);
 	}
@@ -1359,10 +1445,10 @@ void test("orderbook replayJournal", () => {
 		const response = ob.oco({
 			side: Side.BUY,
 			id: "oco-order-b-90-130/140",
-			size: 1,
-			price: 90,
-			stopPrice: 130,
-			stopLimitPrice: 140,
+			size: BigNumber(1),
+			price: BigNumber(90),
+			stopPrice: BigNumber(130),
+			stopLimitPrice: BigNumber(140),
 		});
 		if (response.log != null) journal.push(response.log);
 	}
@@ -1372,17 +1458,17 @@ void test("orderbook replayJournal", () => {
 		const response = ob.oco({
 			side: Side.SELL,
 			id: "oco-order-s-130-90/80",
-			size: 1,
-			price: 130,
-			stopPrice: 90,
-			stopLimitPrice: 80,
+			size: BigNumber(1),
+			price: BigNumber(130),
+			stopPrice: BigNumber(90),
+			stopLimitPrice: BigNumber(80),
 		});
 		if (response.log != null) journal.push(response.log);
 	}
 
 	{
 		// Modify and delete the order
-		const modifyOrder = ob.modify("limit-order-b100", { size: 2 });
+		const modifyOrder = ob.modify("limit-order-b100", { size: BigNumber(2) });
 		if (modifyOrder.log != null) journal.push(modifyOrder.log);
 		const deleteOrder = ob.cancel("limit-order-b100");
 		if (deleteOrder?.log != null) journal.push(deleteOrder.log);
@@ -1573,9 +1659,9 @@ void test("orderbook test snapshot", () => {
 			id: orderId,
 			type: OrderType.STOP_LIMIT,
 			side,
-			size: 10,
-			price: stopPrice,
-			stopPrice,
+			size: BigNumber(10),
+			price: BigNumber(stopPrice),
+			stopPrice: BigNumber(stopPrice),
 			timeInForce: TimeInForce.GTC,
 		});
 	};
@@ -1607,54 +1693,54 @@ void test("orderbook test snapshot", () => {
 
 	assert.equal(typeof snapshot.ts, "number");
 	snapshot.asks.forEach((level) => {
-		assert.equal(typeof level.price, "number");
+		assert.equal(typeof level.price.toNumber(), "number");
 		assert.equal(Array.isArray(level.orders), true);
 		level.orders.forEach((order) => {
 			assert.equal(typeof order.id, "string");
 			assert.equal(order.type, OrderType.LIMIT);
 			assert.equal(order.side, Side.SELL);
-			assert.equal(order.size, 10);
-			assert.equal(order.origSize, 10);
+			assert.equal(order.size.toNumber(), 10);
+			assert.equal(order.origSize.toNumber(), 10);
 		});
 	});
 
 	snapshot.bids.forEach((level) => {
-		assert.equal(typeof level.price, "number");
+		assert.equal(typeof level.price.toNumber(), "number");
 		assert.equal(Array.isArray(level.orders), true);
 		level.orders.forEach((order) => {
 			assert.equal(typeof order.id, "string");
 			assert.equal(order.type, OrderType.LIMIT);
 			assert.equal(order.side, Side.BUY);
-			assert.equal(order.size, 10);
-			assert.equal(order.origSize, 10);
+			assert.equal(order.size.toNumber(), 10);
+			assert.equal(order.origSize.toNumber(), 10);
 		});
 	});
 
 	snapshot.stopBook.asks.forEach((level) => {
-		assert.equal(typeof level.price, "number");
+		assert.equal(typeof level.price.toNumber(), "number");
 		assert.equal(Array.isArray(level.orders), true);
 		level.orders.forEach((order) => {
 			assert.equal(typeof order.id, "string");
 			assert.equal(order.type, OrderType.STOP_LIMIT);
 			assert.equal(order.side, Side.BUY);
-			assert.equal(order.size, 10);
+			assert.equal(order.size.toNumber(), 10);
 			// @ts-expect-error we know exists for IStopLimitOrder
-			assert.equal(typeof order.price, "number");
-			assert.equal(typeof order.stopPrice, "number");
+			assert.equal(typeof order.price.toNumber(), "number");
+			assert.equal(typeof order.stopPrice.toNumber(), "number");
 		});
 	});
 
 	snapshot.stopBook.bids.forEach((level) => {
-		assert.equal(typeof level.price, "number");
+		assert.equal(typeof level.price.toNumber(), "number");
 		assert.equal(Array.isArray(level.orders), true);
 		level.orders.forEach((order) => {
 			assert.equal(typeof order.id, "string");
 			assert.equal(order.type, OrderType.STOP_LIMIT);
 			assert.equal(order.side, Side.BUY);
-			assert.equal(order.size, 10);
+			assert.equal(order.size.toNumber(), 10);
 			// @ts-expect-error we know exists for IStopLimitOrder
-			assert.equal(typeof order.price, "number");
-			assert.equal(typeof order.stopPrice, "number");
+			assert.equal(typeof order.price.toNumber(), "number");
+			assert.equal(typeof order.stopPrice.toNumber(), "number");
 		});
 	});
 });
@@ -1676,9 +1762,9 @@ void test("orderbook restore from snapshot", () => {
 			id: orderId,
 			type: OrderType.STOP_LIMIT,
 			side,
-			size: 10,
-			price: stopPrice,
-			stopPrice,
+			size: BigNumber(10),
+			price: BigNumber(stopPrice),
+			stopPrice: BigNumber(stopPrice),
 			timeInForce: TimeInForce.GTC,
 		});
 	};
@@ -1699,7 +1785,7 @@ void test("orderbook restore from snapshot", () => {
 	//  Start with SELL side
 	const prevMarketprice = ob.marketPrice;
 	// @ts-expect-error we should hack the marketPrice in order to let stop order to be executed
-	ob._marketPrice = 150;
+	ob._marketPrice = BigNumber(150);
 	addStopOrder(Side.SELL, "sell-1", 110);
 	addStopOrder(Side.SELL, "sell-2", 110); // Same price as before
 	addStopOrder(Side.SELL, "sell-3", 120);
@@ -1746,19 +1832,19 @@ void test("orderbook restore from snapshot", () => {
 			assert.deepStrictEqual(order.toObject(), ob2.orders[key].toObject());
 		});
 		// @ts-expect-error these are private properties
-		assert.equal(ob.asks.volume(), ob2.asks.volume());
+		assert.equal(ob.asks.volume().toNumber(), ob2.asks.volume().toNumber());
 		// @ts-expect-error these are private properties
-		assert.equal(ob.bids.volume(), ob2.bids.volume());
+		assert.equal(ob.bids.volume().toNumber(), ob2.bids.volume().toNumber());
 
 		// @ts-expect-error these are private properties
-		assert.equal(ob.asks.total(), ob2.asks.total());
+		assert.equal(ob.asks.total().toNumber(), ob2.asks.total().toNumber());
 		// @ts-expect-error these are private properties
-		assert.equal(ob.bids.total(), ob2.bids.total());
+		assert.equal(ob.bids.total().toNumber(), ob2.bids.total().toNumber());
 
 		// @ts-expect-error these are private properties
-		assert.equal(ob.asks.len(), ob2.asks.len());
+		assert.equal(ob.asks.len().toNumber(), ob2.asks.len().toNumber());
 		// @ts-expect-error these are private properties
-		assert.equal(ob.bids.len(), ob2.bids.len());
+		assert.equal(ob.bids.len().toNumber(), ob2.bids.len().toNumber());
 
 		assert.equal(ob.lastOp, ob2.lastOp);
 
