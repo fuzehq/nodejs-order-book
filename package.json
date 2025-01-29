@@ -1,5 +1,5 @@
 {
-  "name": "orderbook-bignumber",
+  "name": "@fuzefinance/orderbook-bignumber",
   "version": "10.0.0",
   "description": "Node.js Lmit Order Book for high-frequency trading (HFT).",
   "author": "Andrea Fassina <fasenderos@gmail.com>",
@@ -7,7 +7,7 @@
   "homepage": "https://github.com/fasenderos/nodejs-order-book",
   "repository": {
     "type": "git",
-    "url": "git@github.com:fasenderos/nodejs-order-book.git"
+    "url": "git+ssh://git@github.com/fasenderos/nodejs-order-book.git"
   },
   "bugs": {
     "url": "https://github.com/fasenderos/nodejs-order-book/issues"
@@ -90,5 +90,8 @@
     "trading-algorithm",
     "typescript",
     "trading"
-  ]
+  ],
+  "directories": {
+    "test": "test"
+  }
 }
