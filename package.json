@@ -1,6 +1,6 @@
 {
   "name": "@fuzefinance/orderbook-bignumber",
-  "version": "10.0.0",
+  "version": "10.1.0",
   "description": "Node.js Lmit Order Book for high-frequency trading (HFT).",
   "author": "Andrea Fassina <fasenderos@gmail.com>",
   "license": "MIT",

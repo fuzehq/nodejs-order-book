@@ -1,5 +1,14 @@
 # Changelog
 
+## 10.1.0 (2025-02-03)
+
+* fix: recovery method was broken as string doesn't parse to BigNumber ([b56fc64](https://github.com/fasenderos/nodejs-order-book/commit/b56fc64))
+* build: rename package in order to release code ([0ee843f](https://github.com/fasenderos/nodejs-order-book/commit/0ee843f))
+* feat: migrate number to BigNumber to avoid precision issues ([df72b36](https://github.com/fasenderos/nodejs-order-book/commit/df72b36))
+* chore(deps-dev): bump ts-loader from 9.5.1 to 9.5.2 ([0739f6c](https://github.com/fasenderos/nodejs-order-book/commit/0739f6c))
+* chore(deps-dev): bump typescript from 5.7.2 to 5.7.3 ([c0464fe](https://github.com/fasenderos/nodejs-order-book/commit/c0464fe))
+* chore(deps-dev): bump webpack-cli from 5.1.4 to 6.0.1 ([1dc0284](https://github.com/fasenderos/nodejs-order-book/commit/1dc0284))
+
 ## 9.1.0 (2025-01-07)
 
 * docs: snapshot with stopbook ([c48ae23](https://github.com/fasenderos/nodejs-order-book/commit/c48ae23))
