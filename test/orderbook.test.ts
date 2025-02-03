@@ -518,8 +518,8 @@ void test("test stop_market order", () => {
 		const stopOrder = stopMarketBuy.done[0];
 		assert.equal(stopOrder.type, OrderType.STOP_MARKET);
 		assert.equal(stopOrder.side, Side.BUY);
-		assert.equal(stopOrder.size, size);
-		assert.equal(stopOrder.stopPrice, stopPrice);
+		assert.equal(stopOrder.size.toNumber(), size.toNumber());
+		assert.equal(stopOrder.stopPrice.toNumber(), stopPrice.toNumber());
 		assert.equal(stopMarketBuy.quantityLeft, size);
 		assert.equal(stopMarketBuy.err, null);
 
@@ -577,8 +577,8 @@ void test("test stop_market order", () => {
 		const stopOrder = stopMarketSell.done[0] as IStopMarketOrder;
 		assert.equal(stopOrder.type, OrderType.STOP_MARKET);
 		assert.equal(stopOrder.side, Side.SELL);
-		assert.equal(stopOrder.size, size);
-		assert.equal(stopOrder.stopPrice, stopPrice);
+		assert.equal(stopOrder.size.toNumber(), size.toNumber());
+		assert.equal(stopOrder.stopPrice.toNumber(), stopPrice.toNumber());
 		assert.equal(stopMarketSell.quantityLeft, size);
 		assert.equal(stopMarketSell.err, null);
 
@@ -700,9 +700,9 @@ void test("test stop_limit order", () => {
 		const stopOrder = stopLimitBuy.done[0] as IStopLimitOrder;
 		assert.equal(stopOrder.type, OrderType.STOP_LIMIT);
 		assert.equal(stopOrder.side, Side.BUY);
-		assert.equal(stopOrder.size, size);
-		assert.equal(stopOrder.price, price);
-		assert.equal(stopOrder.stopPrice, stopPrice);
+		assert.equal(stopOrder.size.toNumber(), size.toNumber());
+		assert.equal(stopOrder.price.toNumber(), price.toNumber());
+		assert.equal(stopOrder.stopPrice.toNumber(), stopPrice.toNumber());
 		assert.equal(stopOrder.timeInForce, TimeInForce.IOC);
 		assert.equal(stopLimitBuy.quantityLeft, size);
 		assert.equal(stopLimitBuy.err, null);

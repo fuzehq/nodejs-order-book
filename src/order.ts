@@ -1,6 +1,6 @@
 /* node:coverage ignore next - Don't know why first and last line of each file count as uncovered */
 import { randomUUID } from "node:crypto";
-import type BigNumber from "bignumber.js";
+import BigNumber from "bignumber.js";
 import { CustomError, ERROR } from "./errors";
 import {
 	type ILimitOrder,
@@ -78,13 +78,15 @@ export class LimitOrder extends BaseOrder {
 	constructor(options: InternalLimitOrderOptions) {
 		super(options);
 		this._type = options.type;
-		this._origSize = options.origSize;
-		this._price = options.price;
+		this._origSize = BigNumber(options.origSize);
+		this._price = BigNumber(options.price);
 		this._timeInForce = options.timeInForce;
-		this._makerQty = options.makerQty;
-		this._takerQty = options.takerQty;
+		this._makerQty = BigNumber(options.makerQty);
+		this._takerQty = BigNumber(options.takerQty);
 		this._postOnly = options.postOnly ?? false;
-		this._ocoStopPrice = options.ocoStopPrice;
+		this._ocoStopPrice = options.ocoStopPrice
+			? BigNumber(options.ocoStopPrice)
+			: undefined;
 	}
 
 	// Getter for order type
@@ -165,7 +167,7 @@ export class StopMarketOrder extends BaseOrder {
 	constructor(options: InternalStopMarketOrderOptions) {
 		super(options);
 		this._type = options.type;
-		this._stopPrice = options.stopPrice;
+		this._stopPrice = BigNumber(options.stopPrice);
 	}
 
 	// Getter for order type
@@ -208,8 +210,8 @@ export class StopLimitOrder extends BaseOrder {
 	constructor(options: InternalStopLimitOrderOptions) {
 		super(options);
 		this._type = options.type;
-		this._price = options.price;
-		this._stopPrice = options.stopPrice;
+		this._price = BigNumber(options.price);
+		this._stopPrice = BigNumber(options.stopPrice);
 		this._timeInForce = options.timeInForce;
 		this._isOCO = options.isOCO ?? false;
 	}
