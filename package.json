@@ -42,7 +42,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "bignumber.js": "^9.1.2",
+    "bignumber.js": "^9.3.1",
     "denque": "2.1.0",
     "functional-red-black-tree": "1.0.1"
   },
